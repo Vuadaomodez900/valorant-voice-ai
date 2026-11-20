@@ -15,15 +15,15 @@ comtypes==1.4.1; sys_platform == 'win32'
 pycaw==20240210; sys_platform == 'win32'
 
 # Screen Capture (High-FPS DXGI Desktop Duplication)
-dxcam==0.1.1; sys_platform == 'win32'
+dxcam==0.3.0; sys_platform == 'win32'
 
 # Audio Routing & Loopback
 sounddevice==0.4.7
-pyaudiowpatch==0.2.12.7; sys_platform == 'win32'
+pyaudiowpatch==0.2.12.9; sys_platform == 'win32'
 scipy==1.13.1
 
 # AI & Live Streaming
-google-genai==0.1.1
+google-genai>=0.1.1
 openwakeword==0.6.0
 onnxruntime==1.18.0
 
