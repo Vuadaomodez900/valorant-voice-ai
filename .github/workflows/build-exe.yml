@@ -36,24 +36,24 @@ jobs:
           pyinstaller build.spec --clean --noconfirm
 
       - name: Verify Build Output
-        shell: bash
+        shell: pwsh
         run: |
-          if [ -f "dist/ValorantVoiceAI.exe" ]; then
-            echo "SUCCESS: dist/ValorantVoiceAI.exe was built successfully!"
-            ls -lh dist/ValorantVoiceAI.exe
-          else
-            echo "ERROR: dist/ValorantVoiceAI.exe not found!"
+          if (Test-Path "dist/ValorantVoiceAI.exe") {
+            Write-Host "SUCCESS: dist/ValorantVoiceAI.exe was built successfully!"
+            Get-Item "dist/ValorantVoiceAI.exe" | Format-List Length, Name
+          } else {
+            Write-Error "ERROR: dist/ValorantVoiceAI.exe not found!"
             exit 1
-          fi
+          }
 
       - name: Package Distributable Release
-        shell: bash
+        shell: pwsh
         run: |
-          mkdir release
-          cp dist/ValorantVoiceAI.exe release/
-          cp config.yaml release/
-          cp README.md release/
-          cd release && 7z a ../ValorantVoiceAI-Windows-x64.zip *
+          New-Item -ItemType Directory -Force -Path release
+          Copy-Item dist/ValorantVoiceAI.exe release/
+          Copy-Item config.yaml release/
+          Copy-Item README.md release/
+          Compress-Archive -Path release/* -DestinationPath ValorantVoiceAI-Windows-x64.zip -Force
 
       - name: Upload Build Artifact (.exe)
         uses: actions/upload-artifact@v4
