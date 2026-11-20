@@ -76,8 +76,9 @@ def check_audio():
                 print(f"    * Loa/Tai nghe dau ra: [{idx}] {name}")
 
         if not has_cable:
-            print("    [!] CHU Y: Chua tim thay 'VB-Audio Virtual Cable'.")
-            print("       Tai mien phi tai: https://vb-audio.com/Cable/")
+            print("    [!] CHU Y: Chua phat hien 'VB-Audio Virtual Cable' dang hoat dong.")
+            print("       -> DRIVER DA DUOC TICH HOP SAN 100% TRONG APP!")
+            print("       -> Chi can mo app va bam nut: [ CAI DAT VIRTUAL CABLE 1-CHAM ] tren GUI!")
         else:
             print("    [OK] Virtual Audio Cable da san sang!")
 

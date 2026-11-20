@@ -330,3 +330,43 @@ body {
   margin-top: 32px;
   padding: 16px;
 }
+/* Banner Cable Installer */
+.banner-cable {
+  background: #3B1C22;
+  border: 1px solid var(--accent-red);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.banner-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (min-width: 768px) {
+  .banner-content {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+.banner-content h3 {
+  font-family: 'Rajdhani', sans-serif;
+  color: var(--accent-red);
+  font-size: 1.1rem;
+  margin-bottom: 4px;
+}
+
+.banner-content p {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
+.install-status {
+  font-size: 0.85rem;
+  margin-top: 8px;
+  font-weight: 600;
+}

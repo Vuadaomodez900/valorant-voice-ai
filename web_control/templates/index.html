@@ -20,6 +20,18 @@
       </div>
     </header>
 
+    <!-- Integrated Virtual Cable Banner if missing -->
+    <div id="cable-warning-banner" class="banner-cable" style="display: {% if not has_cable %}block{% else %}none{% endif %};">
+      <div class="banner-content">
+        <div>
+          <h3>⚡ CHƯA CÓ VIRTUAL AUDIO CABLE TRÊN MÁY TÍNH</h3>
+          <p>Driver đã được tích hợp sẵn 100% trong file .exe! Bấm nút bên dưới để cài đặt 1-chạm mà không cần tải gì thủ công.</p>
+        </div>
+        <button id="btn-install-cable" class="btn btn-success">⚡ CÀI ĐẶT DRIVER 1-CHẠM NGAY</button>
+      </div>
+      <div id="cable-install-status" class="install-status"></div>
+    </div>
+
     <!-- Main Grid -->
     <main class="grid">
       
@@ -141,7 +153,7 @@
     </main>
 
     <footer class="footer">
-      <p>Valorant Voice AI Companion • 100% Riot Vanguard Compliant • Passive DXGI Stream & WASAPI Loopback</p>
+      <p>Valorant Voice AI Companion • 100% Riot Vanguard Compliant • Passive DXGI Stream & Integrated Virtual Cable</p>
     </footer>
   </div>
 

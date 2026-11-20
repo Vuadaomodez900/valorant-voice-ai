@@ -174,3 +174,38 @@ btnRejectChat.addEventListener("click", async () => {
 
 // Start WebSocket on Load
 window.addEventListener("DOMContentLoaded", initWebSocket);
+
+// Cable 1-Click Install Button Handler
+const btnInstallCable = document.getElementById("btn-install-cable");
+const cableInstallStatus = document.getElementById("cable-install-status");
+const cableWarningBanner = document.getElementById("cable-warning-banner");
+
+if (btnInstallCable) {
+  btnInstallCable.addEventListener("click", async () => {
+    btnInstallCable.disabled = true;
+    btnInstallCable.textContent = "⏳ Đang gửi lệnh cài đặt driver...";
+    cableInstallStatus.textContent = "Vui lòng bấm 'Yes' trên cửa sổ Windows UAC nếu được hỏi...";
+    cableInstallStatus.style.color = "#FFD166";
+
+    try {
+      const res = await fetch("/api/cable/install", { method: "POST" });
+      const data = await res.json();
+      cableInstallStatus.textContent = data.message;
+      if (data.success) {
+        cableInstallStatus.style.color = "#00E676";
+        btnInstallCable.textContent = "ĐÃ CÀI ĐẶT THÀNH CÔNG";
+        setTimeout(() => {
+          if (cableWarningBanner) cableWarningBanner.style.display = "none";
+        }, 3000);
+      } else {
+        cableInstallStatus.style.color = "#FF4655";
+        btnInstallCable.disabled = false;
+        btnInstallCable.textContent = "THỬ CÀI LẠI";
+      }
+    } catch (e) {
+      cableInstallStatus.textContent = "Lỗi kết nối tới máy chủ khi cài đặt driver.";
+      cableInstallStatus.style.color = "#FF4655";
+      btnInstallCable.disabled = false;
+    }
+  });
+}

@@ -2,6 +2,7 @@
 Fast Config GUI (CustomTkinter) for Valorant Voice AI.
 Features:
 - Instant device selection: Physical Mic, Virtual Cable, Playback Device.
+- Integrated 1-Click Virtual Audio Cable Driver Installer (No external downloads required).
 - Gemini API Key / AGY status input and persistence.
 - Live Screen Stream FPS & Wake Word toggles.
 - QR Code display for instant mobile connection.
@@ -23,6 +24,7 @@ except ImportError:
 import qrcode
 from core.config import config
 from core.audio_router import AudioRouter
+from core.cable_installer import is_vbcable_installed, install_vbcable_integrated
 
 
 class QuickConfigApp:
@@ -38,6 +40,9 @@ class QuickConfigApp:
 
         self.root = None
         self._is_visible = True
+        self.cable_banner = None
+        self.cable_btn = None
+        self.cable_status_lbl = None
 
     def create_ui(self) -> None:
         if ctk is None:
@@ -48,9 +53,9 @@ class QuickConfigApp:
         ctk.set_default_color_theme("blue")
 
         self.root = ctk.CTk()
-        self.root.title("Valorant Voice AI - Windows Companion")
-        self.root.geometry("780x640")
-        self.root.minsize(700, 580)
+        self.root.title("Valorant Voice AI - Windows Companion (Tích Hợp Sẵn Virtual Cable)")
+        self.root.geometry("820x680")
+        self.root.minsize(740, 600)
 
         # Handle window close event -> minimize to tray
         self.root.protocol("WM_DELETE_WINDOW", self.hide_to_tray)
@@ -74,11 +79,16 @@ class QuickConfigApp:
 
         subtitle_label = ctk.CTkLabel(
             left_frame,
-            text="Thiết lập âm thanh hai chiều, Gemini Live & Màn hình thụ động",
+            text="Dual Audio Routing • Gemini Multimodal Live • Integrated Driver",
             font=ctk.CTkFont(size=12),
             text_color="#94A3B8"
         )
-        subtitle_label.pack(anchor="w", pady=(0, 16))
+        subtitle_label.pack(anchor="w", pady=(0, 12))
+
+        # INTEGRATED VIRTUAL CABLE 1-CLICK INSTALLER BANNER
+        has_cable = is_vbcable_installed()
+        if not has_cable:
+            self._build_cable_install_banner(left_frame)
 
         # 1. Device Selection Section
         dev_section = ctk.CTkLabel(left_frame, text="1. THIẾT BỊ ÂM THANH (AUDIO ROUTING)", font=ctk.CTkFont(size=14, weight="bold"))
@@ -90,29 +100,25 @@ class QuickConfigApp:
 
         # Physical Mic
         ctk.CTkLabel(left_frame, text="Micro Vật Lý Của Bạn:").pack(anchor="w", pady=(4, 2))
-        self.mic_combo = ctk.CTkComboBox(left_frame, values=input_names, width=400)
+        self.mic_combo = ctk.CTkComboBox(left_frame, values=input_names, width=420)
         self.mic_combo.pack(anchor="w", pady=(0, 8))
 
         # Virtual Cable Output (for Valorant in-game voice)
-        ctk.CTkLabel(left_frame, text="Virtual Cable (Mic Game Đồng Đội):").pack(anchor="w", pady=(4, 2))
-        self.cable_combo = ctk.CTkComboBox(left_frame, values=output_names, width=400)
-        # Try to select CABLE Input if present
-        for name in output_names:
-            if "cable" in name.lower():
-                self.cable_combo.set(name)
-                break
+        ctk.CTkLabel(left_frame, text="Virtual Cable (Mic Game Cho Đồng Đội):").pack(anchor="w", pady=(4, 2))
+        self.cable_combo = ctk.CTkComboBox(left_frame, values=output_names, width=420)
+        self._select_cable_device(output_names)
         self.cable_combo.pack(anchor="w", pady=(0, 8))
 
         # Headphone Output
         ctk.CTkLabel(left_frame, text="Tai Nghe Của Bạn (Phát Giọng AI):").pack(anchor="w", pady=(4, 2))
-        self.hp_combo = ctk.CTkComboBox(left_frame, values=output_names, width=400)
+        self.hp_combo = ctk.CTkComboBox(left_frame, values=output_names, width=420)
         self.hp_combo.pack(anchor="w", pady=(0, 16))
 
         # 2. Gemini Live API Key
         api_section = ctk.CTkLabel(left_frame, text="2. CẤU HÌNH GEMINI LIVE API", font=ctk.CTkFont(size=14, weight="bold"))
         api_section.pack(anchor="w", pady=(8, 4))
 
-        self.api_entry = ctk.CTkEntry(left_frame, placeholder_text="Nhập GEMINI_API_KEY (hoặc để trống nếu dùng AGY CLI)", width=400, show="•")
+        self.api_entry = ctk.CTkEntry(left_frame, placeholder_text="Nhập GEMINI_API_KEY (hoặc để trống nếu dùng AGY CLI)", width=420, show="•")
         current_key = config.data["gemini"].get("api_key", "")
         if current_key:
             self.api_entry.insert(0, current_key)
@@ -134,9 +140,15 @@ class QuickConfigApp:
         self.ptt_switch.select() if config.data["audio"]["auto_mic_trigger"] else self.ptt_switch.deselect()
         self.ptt_switch.pack(anchor="w", pady=4)
 
-        # Save Button
-        save_btn = ctk.CTkButton(left_frame, text="LƯU CẤU HÌNH", fg_color="#FF4655", hover_color="#E03E4C", command=self.save_settings)
-        save_btn.pack(anchor="w", pady=(16, 8))
+        # Save Button & Refresh Button
+        btn_row = ctk.CTkFrame(left_frame, fg_color="transparent")
+        btn_row.pack(anchor="w", pady=(16, 8))
+
+        save_btn = ctk.CTkButton(btn_row, text="LƯU CẤU HÌNH", fg_color="#FF4655", hover_color="#E03E4C", command=self.save_settings)
+        save_btn.pack(side="left", padx=(0, 8))
+
+        refresh_btn = ctk.CTkButton(btn_row, text="LÀM MỚI THIẾT BỊ", fg_color="#334155", hover_color="#475569", command=self.refresh_devices)
+        refresh_btn.pack(side="left")
 
         # Right Column Frame (QR Code, Status & System Tray Button)
         right_frame = ctk.CTkFrame(self.root, corner_radius=10)
@@ -182,6 +194,85 @@ class QuickConfigApp:
             command=self.on_shutdown
         )
         exit_btn.pack(fill="x", padx=16, pady=8)
+
+    def _build_cable_install_banner(self, parent) -> None:
+        """Banner with 1-click installer for Virtual Cable embedded driver."""
+        self.cable_banner = ctk.CTkFrame(parent, fg_color="#3B1C22", corner_radius=8, border_color="#FF4655", border_width=1)
+        self.cable_banner.pack(fill="x", pady=(0, 14), padx=2)
+
+        lbl = ctk.CTkLabel(
+            self.cable_banner,
+            text="⚡ CHƯA PHÁT HIỆN VIRTUAL AUDIO CABLE",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color="#FF4655"
+        )
+        lbl.pack(anchor="w", padx=12, pady=(10, 2))
+
+        sub_lbl = ctk.CTkLabel(
+            self.cable_banner,
+            text="Driver đã được tích hợp sẵn 100% trong file .exe! Bấm nút dưới để cài đặt 1-chạm mà không cần tải gì bên ngoài.",
+            font=ctk.CTkFont(size=11),
+            text_color="#E2E8F0",
+            wraplength=400,
+            justify="left"
+        )
+        sub_lbl.pack(anchor="w", padx=12, pady=(0, 8))
+
+        self.cable_btn = ctk.CTkButton(
+            self.cable_banner,
+            text="⚡ CÀI ĐẶT VIRTUAL CABLE 1-CHẠM (TÍCH HỢP SẴN)",
+            fg_color="#238636",
+            hover_color="#2EA043",
+            font=ctk.CTkFont(weight="bold"),
+            command=self.handle_install_cable
+        )
+        self.cable_btn.pack(anchor="w", padx=12, pady=(0, 10))
+
+        self.cable_status_lbl = ctk.CTkLabel(self.cable_banner, text="", font=ctk.CTkFont(size=11))
+        self.cable_status_lbl.pack(anchor="w", padx=12, pady=(0, 6))
+
+    def handle_install_cable(self) -> None:
+        """Executes 1-click silent elevated installation of bundled driver."""
+        if self.cable_btn:
+            self.cable_btn.configure(state="disabled", text="⏳ Đang cài đặt driver ngầm...")
+        if self.cable_status_lbl:
+            self.cable_status_lbl.configure(text="Vui lòng nhấn 'Yes' trên cửa sổ Windows UAC nếu được hỏi...")
+
+        def worker():
+            success, msg = install_vbcable_integrated()
+            if self.root:
+                self.root.after(0, lambda: self._on_install_cable_finished(success, msg))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _on_install_cable_finished(self, success: bool, msg: str) -> None:
+        if self.cable_status_lbl:
+            self.cable_status_lbl.configure(text=msg, text_color="#00E676" if success else "#FF4655")
+        if self.cable_btn:
+            self.cable_btn.configure(state="normal", text="THỬ CÀI LẠI" if not success else "ĐÃ CÀI ĐẶT THÀNH CÔNG")
+        if success:
+            self.refresh_devices()
+
+    def _select_cable_device(self, output_names: list) -> None:
+        for name in output_names:
+            if "cable" in name.lower():
+                self.cable_combo.set(name)
+                break
+
+    def refresh_devices(self) -> None:
+        devices = AudioRouter.get_audio_devices()
+        input_names = [d["name"] for d in devices["inputs"]] or ["Default Microphone"]
+        output_names = [d["name"] for d in devices["outputs"]] or ["Default Headphones"]
+
+        if self.mic_combo:
+            self.mic_combo.configure(values=input_names)
+        if self.cable_combo:
+            self.cable_combo.configure(values=output_names)
+            self._select_cable_device(output_names)
+        if self.hp_combo:
+            self.hp_combo.configure(values=output_names)
+
+        print("[GUI] Audio devices refreshed.")
 
     def save_settings(self) -> None:
         if self.api_entry:

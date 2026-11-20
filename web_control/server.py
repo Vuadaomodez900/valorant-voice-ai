@@ -7,6 +7,7 @@ Controls:
 - Live Screen Stream FPS Slider (1-5 FPS)
 - AI Voice Presets, Rate, Pitch
 - Permission-Gated Chat Draft Approval / Rejection
+- Integrated Virtual Audio Cable 1-Click Driver Installation
 - QR Code generation for 1-touch mobile LAN connection
 """
 
@@ -16,7 +17,7 @@ import threading
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request, Depends
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -25,6 +26,7 @@ from pydantic import BaseModel, Field
 import qrcode
 from core.config import config, get_resource_path
 from core.in_game_chat import chat_manager
+from core.cable_installer import is_vbcable_installed, install_vbcable_integrated
 
 app = FastAPI(title="Valorant Voice AI - LAN Control", docs_url=None, redoc_url=None)
 
@@ -42,7 +44,6 @@ def get_local_ip() -> str:
     """Detects local LAN IPv4 address reliably."""
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        # Dummy connect to common gateway (doesn't send packets)
         s.connect(("8.8.8.8", 80))
         ip = s.getsockname()[0]
     except Exception:
@@ -52,7 +53,6 @@ def get_local_ip() -> str:
     return ip
 
 
-# Global connection manager for real-time WebSocket clients
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
@@ -112,7 +112,7 @@ class VoiceSettingsRequest(BaseModel):
 
 class ChatActionRequest(BaseModel):
     draft_id: str
-    action: str  # "approve" or "reject"
+    action: str
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -127,6 +127,7 @@ async def index_page(request: Request):
             "local_url": url,
             "local_ip": local_ip,
             "port": port,
+            "has_cable": is_vbcable_installed(),
             "require_pin": config.data["web"]["require_pin"],
         }
     )
@@ -134,7 +135,6 @@ async def index_page(request: Request):
 
 @app.get("/api/qr")
 async def get_qr_code():
-    """Returns QR code image to quickly open the dashboard on smartphone."""
     local_ip = get_local_ip()
     port = config.data["web"]["port"]
     url = f"http://{local_ip}:{port}"
@@ -171,9 +171,17 @@ async def get_system_status():
         "mute_game_mic": is_muted,
         "screen_fps": fps,
         "gemini_connected": is_connected,
+        "has_virtual_cable": is_vbcable_installed(),
         "voice_name": config.data["gemini"]["voice_name"],
         "pending_chat": active_draft
     }
+
+
+@app.post("/api/cable/install")
+async def trigger_cable_installation():
+    """Triggers 1-click silent elevated installation of embedded virtual cable driver."""
+    success, message = install_vbcable_integrated()
+    return {"success": success, "message": message}
 
 
 @app.post("/api/volume")
@@ -186,7 +194,6 @@ async def update_volume(req: VolumeUpdateRequest):
         if req.mute_game_mic is not None:
             engine_router.mute_game_mic = req.mute_game_mic
 
-        # Broadcast state to WebSocket clients
         await ws_manager.broadcast({
             "type": "volume_update",
             "headphone": engine_router.volume_headphone,
@@ -235,7 +242,6 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_text()
-            # Heartbeat ping/pong
             if data == "ping":
                 await websocket.send_text("pong")
     except WebSocketDisconnect:

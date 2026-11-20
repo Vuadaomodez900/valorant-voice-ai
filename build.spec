@@ -8,11 +8,12 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 block_cipher = None
 
-# Collect custom assets and data files
+# Collect custom assets, templates, web files and integrated driver installer
 datas = [
     ('config.yaml', '.'),
     ('web_control/templates', 'web_control/templates'),
     ('web_control/static', 'web_control/static'),
+    ('drivers/vbcable', 'drivers/vbcable'),
 ]
 
 # Collect customtkinter and other dynamic package assets
@@ -113,7 +114,7 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=True,  # Set to True to allow console output, or False for clean GUI
+    console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
