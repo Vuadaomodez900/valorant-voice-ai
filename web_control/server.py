@@ -122,17 +122,20 @@ async def index_page(request: Request):
     local_ip = get_local_ip()
     port = config.data["web"]["port"]
     url = f"http://{local_ip}:{port}"
-    return templates.TemplateResponse(
-        "index.html",
-        {
-            "request": request,
-            "local_url": url,
-            "local_ip": local_ip,
-            "port": port,
-            "has_cable": is_vbcable_installed(),
-            "require_pin": config.data["web"]["require_pin"],
-        }
-    )
+    context = {
+        "request": request,
+        "local_url": url,
+        "local_ip": local_ip,
+        "port": port,
+        "has_cable": is_vbcable_installed(),
+        "require_pin": config.data["web"]["require_pin"],
+    }
+    try:
+        # Starlette >= 0.28 / 0.36+ signature: TemplateResponse(request=request, name="index.html", context=context)
+        return templates.TemplateResponse(request=request, name="index.html", context=context)
+    except TypeError:
+        # Starlette < 0.28 legacy signature: TemplateResponse("index.html", context)
+        return templates.TemplateResponse("index.html", context)
 
 
 @app.get("/api/qr")
