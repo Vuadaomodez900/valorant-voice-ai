@@ -1,0 +1,83 @@
+# Valorant Voice AI - Configuration File
+# ---------------------------------------------
+
+audio:
+  # Leave empty to automatically use system default
+  physical_mic: ""
+  # Device name substring for VB-Audio Virtual Cable (or your virtual audio cable)
+  virtual_mic_out: "CABLE Input"
+  # User's default listening device (headphones/speakers)
+  headphone_out: ""
+  # System audio loopback (captures in-game voice chat & sound effects)
+  wasapi_loopback_device: ""
+  
+  # Volume multipliers (0.0 = 0%, 1.0 = 100%, 2.0 = 200%)
+  volume_headphone: 1.0
+  volume_game_mic: 1.0
+  
+  # Mute AI voice to game teammates (only user hears AI when true)
+  mute_game_mic: false
+  
+  # Game mic trigger settings
+  auto_mic_trigger: true # Automatically simulates PTT when AI speaks
+  ptt_key: "v"           # In-game Valorant team voice chat key
+  sample_rate: 16000     # Input sample rate for Gemini & wake word
+
+screen:
+  # Continuous streaming FPS to Gemini Live API (1 - 5 recommended to save bandwidth/tokens)
+  fps_live_stream: 2
+  # Rolling buffer FPS (15 - 30 FPS for high fidelity instant replays)
+  fps_buffer: 15
+  # Length in seconds of rolling local video buffer (e.g. for "What killed me?")
+  buffer_seconds: 20
+  # Monitor index to capture (0 = primary monitor)
+  monitor_index: 0
+  # Target capture resolution sent to AI [width, height]
+  capture_resolution: [1280, 720]
+
+wake_word:
+  enabled: true
+  # Supported: "hey_gemini", "hey_google", "alexa"
+  model_name: "hey_gemini"
+  threshold: 0.5
+  barge_in: true
+
+gemini:
+  # API key (Can also be set via GEMINI_API_KEY environment variable)
+  api_key: ""
+  # Live model identifier
+  model: "gemini-2.0-flash-exp"
+  # Voice preset: Puck, Charon, Aoede, Fenrir, Kore
+  voice_name: "Puck"
+  speech_rate: 1.0
+  pitch: 0.0
+  system_prompt: >
+    You are an elite Valorant tactical voice assistant and coach.
+    You passively observe the game screen and team voice in real time.
+    CRITICAL RULES:
+    1. NEVER give unsolicited advice or speak unprompted. ONLY answer when the user explicitly addresses you.
+    2. When asked questions (tactics, economy, crosshair, enemy location, what just happened), be concise, sharp, and helpful (max 2 sentences in-round).
+    3. If asked to translate teammates' voice, translate faithfully into Vietnamese.
+    4. If preparing an in-game chat message, draft it concisely. Never send without explicit approval.
+
+overlay:
+  enabled: true
+  opacity: 0.88
+  click_through: true
+  # Uses Windows 10/11 SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)
+  # So overlay NEVER appears in AI screen stream or game capture
+  exclude_from_capture: true
+  position: "top-right"
+  translation_enabled: true
+  translation_target_lang: "vi"
+
+web:
+  host: "0.0.0.0"
+  port: 8765
+  require_pin: false
+  pin: "1234"
+
+process_watcher:
+  target_process: "VALORANT-Win64-Shipping.exe"
+  check_interval: 2.0
+  auto_toggle_overlay: true

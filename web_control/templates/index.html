@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Valorant Voice AI - LAN Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo-area">
+        <span class="logo-badge">VALORANT</span>
+        <h1>VOICE AI DASHBOARD</h1>
+      </div>
+      <div class="status-indicator">
+        <span id="conn-pill" class="pill pill-offline">DISCONNECTED</span>
+      </div>
+    </header>
+
+    <!-- Main Grid -->
+    <main class="grid">
+      
+      <!-- Card: Audio Volume Controls -->
+      <section class="card audio-card">
+        <div class="card-header">
+          <span class="card-tag">DUAL AUDIO ROUTING</span>
+          <h2>ĐIỀU CHỈNH ÂM LƯỢNG THỜI GIAN THỰC</h2>
+        </div>
+        
+        <!-- Headphone Slider -->
+        <div class="slider-group">
+          <div class="slider-labels">
+            <span>🎧 Tai Nghe Của Bạn</span>
+            <span id="hp-val" class="slider-number">100%</span>
+          </div>
+          <input type="range" id="hp-slider" min="0" max="200" value="100" class="slider">
+          <div class="slider-scale">
+            <span>0%</span>
+            <span>100% (Chuẩn)</span>
+            <span>200% (Khuếch đại)</span>
+          </div>
+        </div>
+
+        <!-- Teammate Virtual Mic Slider -->
+        <div class="slider-group">
+          <div class="slider-labels">
+            <span>🎙️ Mic Game Cho Đồng Đội</span>
+            <span id="mic-val" class="slider-number">100%</span>
+          </div>
+          <input type="range" id="mic-slider" min="0" max="200" value="100" class="slider slider-accent">
+          <div class="slider-scale">
+            <span>0%</span>
+            <span>100% (Chuẩn)</span>
+            <span>200% (Khuếch đại)</span>
+          </div>
+        </div>
+
+        <!-- Quick Mute Button -->
+        <div class="action-row">
+          <button id="btn-mute" class="btn btn-warning">
+            <span class="btn-icon">🔇</span>
+            <span id="mute-label">MUTE GIỌNG AI VÀO GAME</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Card: Permission-Gated Chat Draft Approval -->
+      <section class="card chat-card">
+        <div class="card-header">
+          <span class="card-tag">PERMISSION GATE</span>
+          <h2>DUYỆT GỬI CHAT IN-GAME</h2>
+        </div>
+        <div id="no-chat-msg" class="empty-state">
+          <span>Không có tin nhắn nháp nào đang chờ duyệt.</span>
+        </div>
+        <div id="chat-draft-box" class="draft-box" style="display: none;">
+          <div class="draft-channel-badge" id="draft-channel">TEAM CHAT</div>
+          <p class="draft-text" id="draft-text">"Sova 40 HP at A Site"</p>
+          <div class="draft-actions">
+            <button id="btn-approve-chat" class="btn btn-success">✔ GỬI VÀO GAME</button>
+            <button id="btn-reject-chat" class="btn btn-danger">✖ HỦY</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Card: Live Screen Stream & AI Voice Preset -->
+      <section class="card settings-card">
+        <div class="card-header">
+          <span class="card-tag">VISION & VOICE</span>
+          <h2>QUAY MÀN HÌNH & GIỌNG AI</h2>
+        </div>
+
+        <!-- Screen Stream FPS -->
+        <div class="setting-item">
+          <div class="setting-text">
+            <strong>Live Screen Stream FPS</strong>
+            <p>Tốc độ gửi ảnh màn hình thụ động sang Gemini Live</p>
+          </div>
+          <div class="fps-selector">
+            <button class="fps-btn" data-fps="1">1 FPS</button>
+            <button class="fps-btn active" data-fps="2">2 FPS</button>
+            <button class="fps-btn" data-fps="3">3 FPS</button>
+            <button class="fps-btn" data-fps="5">5 FPS</button>
+          </div>
+        </div>
+
+        <!-- AI Voice Preset -->
+        <div class="setting-item">
+          <div class="setting-text">
+            <strong>Giọng đọc Gemini</strong>
+            <p>Chọn phong cách phát âm AI</p>
+          </div>
+          <select id="voice-select" class="select-box">
+            <option value="Puck">Puck (Nam - Trầm, Rõ ràng)</option>
+            <option value="Charon">Charon (Nam - Trưởng thành, Quyết đoán)</option>
+            <option value="Aoede">Aoede (Nữ - Truyền cảm, Tự nhiên)</option>
+            <option value="Fenrir">Fenrir (Nam - Hùng hồn, Mạnh mẽ)</option>
+            <option value="Kore">Kore (Nữ - Nhẹ nhàng, Dịu êm)</option>
+          </select>
+        </div>
+      </section>
+
+      <!-- Card: Connection QR Code for Phone -->
+      <section class="card qr-card">
+        <div class="card-header">
+          <span class="card-tag">LAN MOBILE CONNECT</span>
+          <h2>KẾT NỐI QUA ĐIỆN THOẠI</h2>
+        </div>
+        <div class="qr-content">
+          <img src="/api/qr" alt="Scan QR Code" class="qr-image">
+          <div class="qr-text">
+            <p>Quét mã bằng camera điện thoại trên cùng mạng Wi-Fi để điều khiển âm lượng từ xa khi đang chơi Valorant.</p>
+            <code class="qr-url">{{ local_url }}</code>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="footer">
+      <p>Valorant Voice AI Companion • 100% Riot Vanguard Compliant • Passive DXGI Stream & WASAPI Loopback</p>
+    </footer>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
