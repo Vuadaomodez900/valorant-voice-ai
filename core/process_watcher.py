@@ -10,7 +10,11 @@ Compliance guarantee:
 import threading
 import time
 from typing import Callable, List, Optional
-import psutil
+
+try:
+    import psutil
+except ImportError:
+    psutil = None
 
 
 class ProcessWatcher:
@@ -36,6 +40,8 @@ class ProcessWatcher:
 
     def check_process_status(self) -> bool:
         """Passive scan across running process names."""
+        if psutil is None:
+            return False
         found = False
         pid_found = None
         try:

@@ -7,7 +7,11 @@ import os
 import sys
 from pathlib import Path
 from typing import Any, Dict
-import yaml
+
+try:
+    import yaml
+except ImportError:
+    yaml = None
 
 DEFAULT_CONFIG: Dict[str, Any] = {
     "audio": {
@@ -123,7 +127,7 @@ class AppConfig:
         user_cfg = get_user_data_dir() / "config.yaml"
         load_target = user_cfg if user_cfg.exists() else self.config_path
 
-        if load_target.exists():
+        if load_target.exists() and yaml is not None:
             try:
                 with open(load_target, "r", encoding="utf-8") as f:
                     user_data = yaml.safe_load(f) or {}
@@ -145,6 +149,8 @@ class AppConfig:
 
     def save(self) -> None:
         """Saves current configuration to user data dir."""
+        if yaml is None:
+            return
         target = get_user_data_dir() / "config.yaml"
         try:
             with open(target, "w", encoding="utf-8") as f:
