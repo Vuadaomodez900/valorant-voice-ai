@@ -61,6 +61,14 @@ class ValorantVoiceAIOrchestrator:
             threshold=cfg["wake_word"]["threshold"]
         )
 
+        # Dedicated detector for teammates' voice chat via WASAPI loopback
+        self.teammate_wake_detector = WakeWordDetector(
+            model_name=cfg["wake_word"]["model_name"],
+            threshold=cfg["wake_word"]["threshold"]
+        )
+        self.teammate_voice_trigger_enabled = cfg["audio"].get("teammate_voice_trigger", True)
+        self._teammate_listening_until = 0.0
+
         self.translator = VoiceChatTranslator(
             target_lang=cfg["overlay"]["translation_target_lang"]
         )
@@ -78,10 +86,17 @@ class ValorantVoiceAIOrchestrator:
         )
 
         # Wire Web Server to Engine
-        bind_engine_components(self.router, self.screen_manager, self.bridge)
+        bind_engine_components(self.router, self.screen_manager, self.bridge, self)
 
         # 2. Inter-component Pipeline Wiring
         self._wire_pipelines()
+
+    def set_teammate_voice_trigger(self, enabled: bool) -> bool:
+        self.teammate_voice_trigger_enabled = enabled
+        config.data["audio"]["teammate_voice_trigger"] = enabled
+        config.save()
+        print(f"[Orchestrator] Teammate Voice Chat Trigger is now: {self.teammate_voice_trigger_enabled}")
+        return self.teammate_voice_trigger_enabled
 
     def _wire_pipelines(self) -> None:
         """Connects data streams between mic, AI, screen, and translation."""
@@ -94,9 +109,19 @@ class ValorantVoiceAIOrchestrator:
 
         self.router.subscribe_mic(on_user_mic_chunk)
 
-        # B. In-Game WASAPI Loopback (Teammates' Voice) -> Voice Chat Translator
+        # B. In-Game WASAPI Loopback (Teammates' Voice) -> Voice Chat Translator & Wake Word
         def on_loopback_chunk(chunk):
             self.translator.feed_loopback_chunk(chunk)
+
+            # Check if teammate in-game voice chat trigger is active
+            if self.teammate_voice_trigger_enabled:
+                self.teammate_wake_detector.process_pcm_chunk(chunk)
+
+                # Forward teammate question to Gemini if within active query window
+                now = time.time()
+                if now < self._teammate_listening_until:
+                    if self.bridge.is_connected:
+                        self.bridge.send_user_audio_chunk(chunk)
 
         self.router.subscribe_loopback(on_loopback_chunk)
 
@@ -114,13 +139,33 @@ class ValorantVoiceAIOrchestrator:
 
         self.bridge.register_audio_output(on_ai_audio_received)
 
-        # E. Wake Word Trigger Event
-        def on_wake_word_detected(word, score):
-            print(f"[Orchestrator] Wake Word '{word}' triggered! Activating Gemini Live Uplink...")
+        # E. Wake Word Trigger Events (User & Teammate)
+        def on_user_wake_word_detected(word, score):
+            print(f"[Orchestrator] User Wake Word '{word}' triggered! Activating Gemini Live Uplink...")
             if not self.bridge.is_connected:
                 self.bridge.start()
+            self._broadcast_event({
+                "type": "wake_word_triggered",
+                "speaker": "user",
+                "message": f"Bạn vừa gọi '{word}'"
+            })
 
-        self.wake_detector.register_callback(on_wake_word_detected)
+        self.wake_detector.register_callback(on_user_wake_word_detected)
+
+        def on_teammate_wake_word_detected(word, score):
+            if not self.teammate_voice_trigger_enabled:
+                return
+            print(f"[Orchestrator] 🔥 TEAMMATE in-game voice chat triggered '{word}'! Listening for question (6s)...")
+            self._teammate_listening_until = time.time() + 6.0
+            if not self.bridge.is_connected:
+                self.bridge.start()
+            self._broadcast_event({
+                "type": "wake_word_triggered",
+                "speaker": "teammate",
+                "message": f"🎙️ Đồng đội vừa gọi '{word}' qua Voice Chat game! AI đang lắng nghe và sẽ trả lời qua mic..."
+            })
+
+        self.teammate_wake_detector.register_callback(on_teammate_wake_word_detected)
 
         # F. Process Watcher Callbacks
         def on_game_started(pid):

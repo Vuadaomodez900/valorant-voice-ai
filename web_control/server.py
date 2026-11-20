@@ -84,13 +84,15 @@ ws_manager = ConnectionManager()
 engine_router = None
 engine_screen = None
 engine_bridge = None
+engine_orchestrator = None
 
 
-def bind_engine_components(router, screen, bridge):
-    global engine_router, engine_screen, engine_bridge
+def bind_engine_components(router, screen, bridge, orchestrator=None):
+    global engine_router, engine_screen, engine_bridge, engine_orchestrator
     engine_router = router
     engine_screen = screen
     engine_bridge = bridge
+    engine_orchestrator = orchestrator
 
 
 # Pydantic Request Models
@@ -172,9 +174,18 @@ async def get_system_status():
         "screen_fps": fps,
         "gemini_connected": is_connected,
         "has_virtual_cable": is_vbcable_installed(),
+        "teammate_voice_trigger": engine_orchestrator.teammate_voice_trigger_enabled if engine_orchestrator else True,
         "voice_name": config.data["gemini"]["voice_name"],
         "pending_chat": active_draft
     }
+
+
+@app.post("/api/teammate-trigger")
+async def toggle_teammate_trigger(req: dict):
+    enabled = req.get("enabled", True)
+    if engine_orchestrator:
+        engine_orchestrator.set_teammate_voice_trigger(enabled)
+    return {"status": "ok", "enabled": enabled}
 
 
 @app.post("/api/cable/install")

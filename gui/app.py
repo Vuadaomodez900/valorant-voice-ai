@@ -140,6 +140,10 @@ class QuickConfigApp:
         self.ptt_switch.select() if config.data["audio"]["auto_mic_trigger"] else self.ptt_switch.deselect()
         self.ptt_switch.pack(anchor="w", pady=4)
 
+        self.teammate_trigger_switch = ctk.CTkSwitch(left_frame, text="Cho phép đồng đội gọi 'Hey Gemini' qua voice chat game")
+        self.teammate_trigger_switch.select() if config.data["audio"].get("teammate_voice_trigger", True) else self.teammate_trigger_switch.deselect()
+        self.teammate_trigger_switch.pack(anchor="w", pady=4)
+
         # Save Button & Refresh Button
         btn_row = ctk.CTkFrame(left_frame, fg_color="transparent")
         btn_row.pack(anchor="w", pady=(16, 8))
@@ -283,6 +287,8 @@ class QuickConfigApp:
             config.data["overlay"]["enabled"] = bool(self.overlay_switch.get())
         if self.ptt_switch:
             config.data["audio"]["auto_mic_trigger"] = bool(self.ptt_switch.get())
+        if self.teammate_trigger_switch:
+            config.data["audio"]["teammate_voice_trigger"] = bool(self.teammate_trigger_switch.get())
 
         config.save()
         print("[GUI] Settings saved to configuration.")

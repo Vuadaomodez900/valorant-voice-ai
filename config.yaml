@@ -22,6 +22,10 @@ audio:
   auto_mic_trigger: true # Automatically simulates PTT when AI speaks
   ptt_key: "v"           # In-game Valorant team voice chat key
   sample_rate: 16000     # Input sample rate for Gemini & wake word
+  
+  # Cho phép đồng đội trong game gọi "Hey Gemini" qua Voice Chat Valorant
+  # Khi đồng đội gọi, AI sẽ tự động phân tích và trả lời trực tiếp vào mic game
+  teammate_voice_trigger: true
 
 screen:
   # Continuous streaming FPS to Gemini Live API (1 - 5 recommended to save bandwidth/tokens)

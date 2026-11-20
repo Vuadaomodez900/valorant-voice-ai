@@ -62,6 +62,9 @@ async function fetchStatus() {
     if (data.voice_name) {
       voiceSelect.value = data.voice_name;
     }
+    if (data.teammate_voice_trigger !== undefined) {
+      updateTeammateTriggerUI(data.teammate_voice_trigger);
+    }
   } catch (e) {}
 }
 
@@ -208,4 +211,35 @@ if (btnInstallCable) {
       btnInstallCable.disabled = false;
     }
   });
+}
+
+// Teammate Trigger Button
+const btnTeammateTrigger = document.getElementById("btn-teammate-trigger");
+const teammateTriggerLabel = document.getElementById("teammate-trigger-label");
+
+if (btnTeammateTrigger) {
+  btnTeammateTrigger.addEventListener("click", async () => {
+    const isCurrentlyActive = btnTeammateTrigger.classList.contains("active");
+    const newState = !isCurrentlyActive;
+    updateTeammateTriggerUI(newState);
+
+    try {
+      await fetch("/api/teammate-trigger", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: newState })
+      });
+    } catch (e) {}
+  });
+}
+
+function updateTeammateTriggerUI(enabled) {
+  if (!btnTeammateTrigger) return;
+  if (enabled) {
+    btnTeammateTrigger.classList.add("active");
+    teammateTriggerLabel.textContent = "BẬT (ĐỒNG ĐỘI ĐƯỢC GỌI AI)";
+  } else {
+    btnTeammateTrigger.classList.remove("active");
+    teammateTriggerLabel.textContent = "TẮT (CHỈ MÌNH BẠN ĐƯỢC GỌI AI)";
+  }
 }

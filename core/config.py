@@ -21,6 +21,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "auto_mic_trigger": True,
         "ptt_key": "v",
         "sample_rate": 16000,
+        "teammate_voice_trigger": True,
     },
     "screen": {
         "fps_live_stream": 2,
