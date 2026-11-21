@@ -252,6 +252,14 @@ class TestFastAPIWebServer(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(response.json()["status"], ["sent", "failed"])
 
+    def test_callout_endpoint(self):
+        response = self.client.post("/api/callout", json={"text": "Enemy A site", "channel": "team"})
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["status"], "ok")
+        self.assertEqual(data["content"], "Enemy A site")
+        self.assertIn("draft_id", data)
+
 
 if __name__ == "__main__":
     unittest.main()

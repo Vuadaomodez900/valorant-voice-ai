@@ -125,6 +125,25 @@ class ValorantVoiceAIOrchestrator:
 
         self.router.subscribe_loopback(on_loopback_chunk)
 
+        # Wire Subtitle Translation stream to WebSocket clients / Mobile Dashboard
+        def on_sub_received(sub_data):
+            self._broadcast_event({
+                "type": "subtitle",
+                "original": sub_data.get("original", ""),
+                "translated": sub_data.get("translated", "")
+            })
+        self.translator.register_subtitle_subscriber(on_sub_received)
+
+        # Wire Permission-Gated Chat drafts to WebSocket clients / Mobile Dashboard
+        def on_draft_created(draft):
+            self._broadcast_event({
+                "type": "chat_draft",
+                "draft_id": draft.draft_id,
+                "content": draft.content,
+                "channel": draft.target_channel
+            })
+        chat_manager.register_draft_created(on_draft_created)
+
         # C. Live Screen Frames (1-5 FPS) -> Gemini Live Session
         def on_live_frame(jpeg_bytes):
             if self.bridge.is_connected:

@@ -117,6 +117,13 @@ class ChatActionRequest(BaseModel):
     action: str
 
 
+class CalloutRequest(BaseModel):
+    text: str
+    channel: str = "team"
+    speak_in_game: bool = True
+    speak_to_user: bool = True
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index_page(request: Request):
     local_ip = get_local_ip()
@@ -248,6 +255,19 @@ async def handle_chat_action(req: ChatActionRequest):
         chat_manager.reject(req.draft_id)
         return {"status": "rejected"}
     raise HTTPException(status_code=400, detail="Invalid action")
+
+
+@app.post("/api/callout")
+async def handle_callout(req: CalloutRequest):
+    """Allows phone / AGY CLI to send a tactical callout to the game."""
+    draft = chat_manager.propose_chat(req.text, target_channel=req.channel)
+    await ws_manager.broadcast({
+        "type": "chat_draft",
+        "draft_id": draft.draft_id,
+        "content": draft.content,
+        "channel": draft.target_channel
+    })
+    return {"status": "ok", "draft_id": draft.draft_id, "content": draft.content}
 
 
 @app.websocket("/ws")
