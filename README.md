@@ -35,7 +35,10 @@
    - Truy cập giao diện điều khiển bằng trình duyệt PC hoặc camera điện thoại quét mã QR.
    - Kéo thanh trượt âm lượng AI trong tai nghe (0–200%) và âm lượng AI vào game (0–200%).
    - Nút Mute nhanh giọng AI vào game, đổi giọng đọc Gemini (Puck, Charon, Aoede,...).
-7. **Chạy ngầm khay hệ thống (System Tray)**:
+7. **Tích hợp AGY CLI Trực Tiếp Ngay Trên Máy (Embedded AGY Shell & Remote Tools)**:
+   - **Trên Windows**: Bấm nút **`[ 💻 MỞ AGY CLI TERMINAL ]`** trên giao diện hoặc chạy `ValorantVoiceAI.exe --cli` để mở console tương tác trực tiếp bằng bàn phím.
+   - **Trên Điện Thoại (Termux)**: Cung cấp lệnh toàn cục `agy-valorant` (Interactive Shell), `agy-dashboard` (TUI Live Screen), bộ lệnh nhanh `quick_action.sh`, và MCP Server `valorant-voice-ops` để chat điều khiển tự nhiên với AGY.
+8. **Chạy ngầm khay hệ thống (System Tray)**:
    - Đóng cửa sổ chính sẽ tự động thu gọn xuống System Tray cạnh đồng hồ Windows để tiết kiệm diện tích.
 
 ---
