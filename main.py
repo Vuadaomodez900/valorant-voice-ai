@@ -322,9 +322,19 @@ def main():
     )
     tray.start()
 
-    # GUI Configuration Window
+    # GUI or CLI Mode
     gui_app = None
-    if "--headless" not in sys.argv:
+    if "--cli" in sys.argv:
+        # Launch AGY CLI interactive shell directly in the console on the machine
+        from scripts.agy_cli import AGYInteractiveShell
+        shell = AGYInteractiveShell(host="127.0.0.1")
+        try:
+            shell.run_loop()
+        except KeyboardInterrupt:
+            pass
+        finally:
+            on_exit_app()
+    elif "--headless" not in sys.argv:
         from gui.app import QuickConfigApp
         gui_app = QuickConfigApp(
             router=orchestrator.router,

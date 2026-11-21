@@ -179,6 +179,16 @@ class QuickConfigApp:
         url_label = ctk.CTkLabel(right_frame, text=web_url, font=ctk.CTkFont(size=11), text_color="#00F5D4")
         url_label.pack(pady=(0, 16))
 
+        # AGY CLI Terminal on Machine Button
+        cli_btn = ctk.CTkButton(
+            right_frame,
+            text="💻 MỞ AGY CLI TERMINAL\n(Tương tác dòng lệnh ngay trên máy)",
+            fg_color="#0F766E",
+            hover_color="#0D9488",
+            command=self.open_cli_terminal
+        )
+        cli_btn.pack(fill="x", padx=16, pady=(0, 12))
+
         # Tray Minimize Button
         tray_btn = ctk.CTkButton(
             right_frame,
@@ -292,6 +302,19 @@ class QuickConfigApp:
 
         config.save()
         print("[GUI] Settings saved to configuration.")
+
+    def open_cli_terminal(self) -> None:
+        """Launches an interactive AGY CLI terminal window right on the machine."""
+        import subprocess
+        try:
+            if sys.platform == "win32":
+                cmd = f'start cmd /k "{sys.executable}" "{sys.argv[0]}" --cli'
+                subprocess.Popen(cmd, shell=True)
+            else:
+                subprocess.Popen([sys.executable, sys.argv[0], "--cli"])
+            print("[GUI] Launched AGY CLI terminal console.")
+        except Exception as e:
+            print(f"[GUI] Error launching AGY CLI: {e}")
 
     def hide_to_tray(self) -> None:
         """Hides GUI window to let it run smoothly in the background."""
