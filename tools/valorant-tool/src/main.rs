@@ -597,6 +597,23 @@ fn run_mcp_server() {
 
 // ----------------- Main Entry Point -----------------
 
+fn print_usage() {
+    println!("🎮 VALORANT VOICE AI - RUST CLI CONTROLLER v2.0");
+    println!("------------------------------------------------------------");
+    println!("Cách dùng:");
+    println!("  valorant-tool status            Xem trạng thái kết nối và âm lượng");
+    println!("  valorant-tool mute              Mute giọng AI vào mic game");
+    println!("  valorant-tool unmute            Unmute giọng AI vào mic game");
+    println!("  valorant-tool vol <hp> [mic]    Chỉnh âm lượng (ví dụ: 1.2 là 120%)");
+    println!("  valorant-tool approve           Duyệt gửi tin nhắn chat game");
+    println!("  valorant-tool reject            Hủy bản nháp chat game");
+    println!("  valorant-tool callout <text>    Gửi chỉ thị chiến thuật vào game");
+    println!("  valorant-tool diag              Xem báo cáo chẩn đoán chi tiết");
+    println!("  valorant-tool fix               Tự động sửa lỗi hệ thống (Self-Heal)");
+    println!("  valorant-tool scan [target]     Kiểm tra hoặc lưu IP/URL PC");
+    println!("  valorant-tool mcp               Chạy MCP Server cho AGY CLI");
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
 
@@ -605,21 +622,8 @@ fn main() {
         return;
     }
 
-    if args.len() < 2 {
-        println!("🎮 VALORANT VOICE AI - RUST CLI CONTROLLER v2.0");
-        println!("------------------------------------------------------------");
-        println!("Cách dùng:");
-        println!("  valorant-tool status            Xem trạng thái kết nối và âm lượng");
-        println!("  valorant-tool mute              Mute giọng AI vào mic game");
-        println!("  valorant-tool unmute            Unmute giọng AI vào mic game");
-        println!("  valorant-tool vol <hp> [mic]    Chỉnh âm lượng (ví dụ: 1.2 là 120%)");
-        println!("  valorant-tool approve           Duyệt gửi tin nhắn chat game");
-        println!("  valorant-tool reject            Hủy bản nháp chat game");
-        println!("  valorant-tool callout <text>    Gửi chỉ thị chiến thuật vào game");
-        println!("  valorant-tool diag              Xem báo cáo chẩn đoán chi tiết");
-        println!("  valorant-tool fix               Tự động sửa lỗi hệ thống (Self-Heal)");
-        println!("  valorant-tool scan [target]     Kiểm tra hoặc lưu IP/URL PC");
-        println!("  valorant-tool mcp               Chạy MCP Server cho AGY CLI");
+    if args.len() < 2 || args[1] == "help" || args[1] == "--help" || args[1] == "-h" {
+        print_usage();
         return;
     }
 
@@ -655,6 +659,7 @@ fn main() {
         }
         _ => {
             eprintln!("Lệnh không hợp lệ: '{}'. Gõ 'valorant-tool' để xem trợ giúp.", cmd);
+            print_usage();
         }
     }
 }
