@@ -200,6 +200,17 @@ class QuickConfigApp:
         )
         self.internet_btn.pack(fill="x", padx=16, pady=(0, 12))
 
+        # 1-Click Self-Heal & Auto-Fix Button
+        self.heal_btn = ctk.CTkButton(
+            right_frame,
+            text="🔧 TỰ ĐỘNG SỬA LỖI (SELF-HEAL)\n(Sửa mic, driver, tunnel, kết nối)",
+            fg_color="#065F46",
+            hover_color="#047857",
+            font=ctk.CTkFont(weight="bold"),
+            command=self.handle_self_heal
+        )
+        self.heal_btn.pack(fill="x", padx=16, pady=(0, 12))
+
         # AGY CLI Terminal on Machine Button
         cli_btn = ctk.CTkButton(
             right_frame,
@@ -351,6 +362,25 @@ class QuickConfigApp:
                 self.root.after(0, lambda: self._on_remote_url_ready(url))
 
         tunnel_manager.start_tunnel(on_url_ready=on_ready)
+
+    def handle_self_heal(self) -> None:
+        """Executes full autonomous self-repair routine."""
+        if hasattr(self, "heal_btn") and self.heal_btn:
+            self.heal_btn.configure(state="disabled", text="⏳ Đang tự sửa chữa toàn bộ hệ thống...")
+
+        from core.self_healer import self_healer
+
+        def worker():
+            res = self_healer.auto_fix_system()
+            if self.root:
+                self.root.after(0, lambda: self._on_self_heal_finished(res))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _on_self_heal_finished(self, res: dict) -> None:
+        if hasattr(self, "heal_btn") and self.heal_btn:
+            self.heal_btn.configure(state="normal", text="✅ ĐÃ TỰ SỬA XONG!\n(Bấm để sửa lại nếu cần)")
+        self.refresh_devices()
 
     def _on_remote_url_ready(self, url: str) -> None:
         if hasattr(self, "internet_btn") and self.internet_btn:

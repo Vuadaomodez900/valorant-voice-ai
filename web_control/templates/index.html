@@ -2,172 +2,375 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Valorant Voice AI - LAN Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Sakura AI — Valorant Voice Companion</title>
   <link rel="stylesheet" href="/static/style.css">
-  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+  <!-- Ambient background cherry blossom glow -->
+  <div class="ambient-glow glow-sakura"></div>
+  <div class="ambient-glow glow-violet"></div>
+
+  <!-- Animated Falling Sakura Petals -->
+  <div class="petals" aria-hidden="true">
+    <div class="petal b" style="left:2%; width:8px; height:8px; animation-delay:-0.0s; animation-duration:9.0s; --drift:-60px;"></div>
+    <div class="petal a" style="left:12%; width:9px; height:9px; animation-delay:-1.7s; animation-duration:12.0s; --drift:-7px;"></div>
+    <div class="petal a" style="left:22%; width:10px; height:10px; animation-delay:-3.4s; animation-duration:15.0s; --drift:46px;"></div>
+    <div class="petal b" style="left:23%; width:11px; height:11px; animation-delay:-5.1s; animation-duration:10.0s; --drift:-21px;"></div>
+    <div class="petal a" style="left:33%; width:12px; height:12px; animation-delay:-6.8s; animation-duration:13.0s; --drift:32px;"></div>
+    <div class="petal a" style="left:43%; width:13px; height:13px; animation-delay:-8.5s; animation-duration:16.0s; --drift:-35px;"></div>
+    <div class="petal b" style="left:44%; width:14px; height:14px; animation-delay:-10.2s; animation-duration:11.0s; --drift:18px;"></div>
+    <div class="petal a" style="left:54%; width:15px; height:15px; animation-delay:-11.9s; animation-duration:14.0s; --drift:-49px;"></div>
+    <div class="petal a" style="left:64%; width:7px; height:7px; animation-delay:-0.6s; animation-duration:9.0s; --drift:4px;"></div>
+    <div class="petal b" style="left:65%; width:8px; height:8px; animation-delay:-2.3s; animation-duration:12.0s; --drift:57px;"></div>
+    <div class="petal a" style="left:75%; width:9px; height:9px; animation-delay:-4.0s; animation-duration:15.0s; --drift:-10px;"></div>
+    <div class="petal a" style="left:85%; width:10px; height:10px; animation-delay:-5.7s; animation-duration:10.0s; --drift:43px;"></div>
+    <div class="petal b" style="left:86%; width:11px; height:11px; animation-delay:-7.4s; animation-duration:13.0s; --drift:-24px;"></div>
+    <div class="petal a" style="left:96%; width:12px; height:12px; animation-delay:-9.1s; animation-duration:16.0s; --drift:29px;"></div>
+  </div>
+
   <div class="app-container">
-    <!-- Header -->
-    <header class="header">
-      <div class="logo-area">
-        <span class="logo-badge">VALORANT</span>
-        <h1>VOICE AI DASHBOARD</h1>
+    
+    <!-- Topbar HUD -->
+    <header class="topbar">
+      <div class="brand">
+        <!-- Sakura Flower Emblem SVG -->
+        <svg class="sakura-emblem" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+          <g fill="#ff9bb8">
+            <ellipse cx="12" cy="6" rx="2.6" ry="4.2"></ellipse>
+            <ellipse cx="12" cy="6" rx="2.6" ry="4.2" transform="rotate(72 12 12)"></ellipse>
+            <ellipse cx="12" cy="6" rx="2.6" ry="4.2" transform="rotate(144 12 12)"></ellipse>
+            <ellipse cx="12" cy="6" rx="2.6" ry="4.2" transform="rotate(216 12 12)"></ellipse>
+            <ellipse cx="12" cy="6" rx="2.6" ry="4.2" transform="rotate(288 12 12)"></ellipse>
+          </g>
+          <circle cx="12" cy="12" r="2.3" fill="#ffd6e3"></circle>
+        </svg>
+        <span class="brand-text">Sakura<span class="sakura-accent">AI</span></span>
+        <span class="brand-sub">VALORANT COMPANION</span>
       </div>
-      <div class="status-indicator">
-        <span id="conn-pill" class="pill pill-offline">DISCONNECTED</span>
+
+      <!-- Quick Section Navigation Tabs -->
+      <nav class="nav-tabs">
+        <button class="nav-tab active" data-target="all">Tổng Quan</button>
+        <button class="nav-tab" data-target="audio">Âm Thanh</button>
+        <button class="nav-tab" data-target="subtitles">Nhật Ký Dịch</button>
+        <button class="nav-tab" data-target="tactical">Chiến Thuật</button>
+        <button class="nav-tab" data-target="settings">Cài Đặt</button>
+      </nav>
+
+      <!-- Status Cluster -->
+      <div class="status-cluster">
+        <!-- System Health Pill -->
+        <div id="health-pill" class="health-badge" title="Tình trạng hệ thống và AI Self-Healing">
+          <span class="health-dot"></span>
+          <span id="health-text">100% SẴN SÀNG</span>
+        </div>
+        <!-- Connection Pill -->
+        <div id="conn-pill" class="status-pill pill-offline">
+          <span class="dot pulsing-dot"></span>
+          <span id="conn-text">ĐANG KẾT NỐI...</span>
+        </div>
       </div>
     </header>
 
-    <!-- Integrated Virtual Cable Banner if missing -->
-    <div id="cable-warning-banner" class="banner-cable" style="display: {% if not has_cable %}block{% else %}none{% endif %};">
-      <div class="banner-content">
-        <div>
-          <h3>⚡ CHƯA CÓ VIRTUAL AUDIO CABLE TRÊN MÁY TÍNH</h3>
-          <p>Driver đã được tích hợp sẵn 100% trong file .exe! Bấm nút bên dưới để cài đặt 1-chạm mà không cần tải gì thủ công.</p>
-        </div>
-        <button id="btn-install-cable" class="btn btn-success">⚡ CÀI ĐẶT DRIVER 1-CHẠM NGAY</button>
+    <!-- Missing Cable Driver Alert (if any) -->
+    <div id="cable-warning-banner" class="alert-banner" style="display: none;">
+      <div class="alert-icon">⚡</div>
+      <div class="alert-body">
+        <h4>CHƯA CÓ VIRTUAL AUDIO CABLE TRÊN MÁY TÍNH</h4>
+        <p>Driver đã được tích hợp sẵn 100% trong file .exe! Bấm nút bên dưới để cài đặt 1-chạm tự động.</p>
       </div>
-      <div id="cable-install-status" class="install-status"></div>
+      <button id="btn-install-cable" class="btn btn-action-cable">⚡ CÀI DRIVER 1-CHẠM</button>
     </div>
 
-    <!-- Main Grid -->
-    <main class="grid">
+    <!-- Quick Diagnostics & Self-Healing Action Bar -->
+    <section class="diag-action-bar">
+      <div class="diag-indicators">
+        <span class="diag-pill"><i class="dot dot-green"></i> Mic: <strong id="diag-mic">Mặc định</strong></span>
+        <span class="diag-pill"><i class="dot dot-blue"></i> Stream: <strong id="diag-fps">2 FPS</strong></span>
+        <span class="diag-pill"><i class="dot dot-yellow"></i> Game: <strong id="diag-game">Chờ mở...</strong></span>
+      </div>
+      <div class="diag-controls">
+        <button id="btn-auto-fix" class="btn btn-heal" title="Tự động kiểm tra và sửa toàn bộ lỗi">
+          <span class="icon">✨</span> TỰ SỬA LỖI (SELF-HEAL)
+        </button>
+      </div>
+    </section>
+
+    <!-- Main Grid Dashboard -->
+    <main class="main-grid">
       
-      <!-- Card: Audio Volume Controls -->
-      <section class="card audio-card">
-        <div class="card-header">
-          <span class="card-tag">DUAL AUDIO ROUTING</span>
-          <h2>ĐIỀU CHỈNH ÂM LƯỢNG THỜI GIAN THỰC</h2>
-        </div>
-        
-        <!-- Headphone Slider -->
-        <div class="slider-group">
-          <div class="slider-labels">
-            <span>🎧 Tai Nghe Của Bạn</span>
-            <span id="hp-val" class="slider-number">100%</span>
+      <!-- Card 1: Dual Audio Routing Controls -->
+      <section class="pane card audio-card" data-section="audio">
+        <div class="pane-head">
+          <div class="pane-title">
+            <span class="pane-icon">🎧</span> AUDIO ENGINE • DUAL ROUTING
           </div>
-          <input type="range" id="hp-slider" min="0" max="200" value="100" class="slider">
-          <div class="slider-scale">
-            <span>0%</span>
-            <span>100% (Chuẩn)</span>
-            <span>200% (Khuếch đại)</span>
-          </div>
+          <span class="pane-tag">WASAPI LOOPBACK</span>
         </div>
 
-        <!-- Teammate Virtual Mic Slider -->
-        <div class="slider-group">
-          <div class="slider-labels">
-            <span>🎙️ Mic Game Cho Đồng Đội</span>
-            <span id="mic-val" class="slider-number">100%</span>
+        <div class="pane-body">
+          <!-- Equalizer Visualizer Animation -->
+          <div class="visualizer-box">
+            <div class="eq-bars">
+              <span class="bar bar-1"></span>
+              <span class="bar bar-2"></span>
+              <span class="bar bar-3"></span>
+              <span class="bar bar-4"></span>
+              <span class="bar bar-5"></span>
+              <span class="bar bar-6"></span>
+              <span class="bar bar-7"></span>
+              <span class="bar bar-8"></span>
+              <span class="bar bar-9"></span>
+              <span class="bar bar-10"></span>
+            </div>
+            <span class="vis-label" id="audio-state-text">DUAL AUDIO ROUTING ĐANG HOẠT ĐỘNG</span>
           </div>
-          <input type="range" id="mic-slider" min="0" max="200" value="100" class="slider slider-accent">
-          <div class="slider-scale">
-            <span>0%</span>
-            <span>100% (Chuẩn)</span>
-            <span>200% (Khuếch đại)</span>
+          
+          <!-- Headphone Slider -->
+          <div class="slider-group">
+            <div class="slider-header">
+              <div class="label-box">
+                <span class="ctrl-icon">🎧</span>
+                <span class="ctrl-title">Âm Lượng Tai Nghe Bạn</span>
+              </div>
+              <span id="hp-val" class="value-badge value-blue">100%</span>
+            </div>
+            <div class="range-wrap">
+              <input type="range" id="hp-slider" min="0" max="200" value="100" class="range-slider slider-blue">
+            </div>
+            <div class="range-ticks">
+              <span>0% (Mute)</span>
+              <span>100% (Chuẩn)</span>
+              <span>200% (Boost)</span>
+            </div>
           </div>
-        </div>
 
-        <!-- Quick Mute Button -->
-        <div class="action-row">
-          <button id="btn-mute" class="btn btn-warning">
-            <span class="btn-icon">🔇</span>
-            <span id="mute-label">MUTE GIỌNG AI VÀO GAME</span>
-          </button>
-        </div>
-      </section>
-
-      <!-- Card: Permission-Gated Chat Draft Approval -->
-      <section class="card chat-card">
-        <div class="card-header">
-          <span class="card-tag">PERMISSION GATE</span>
-          <h2>DUYỆT GỬI CHAT IN-GAME</h2>
-        </div>
-        <div id="no-chat-msg" class="empty-state">
-          <span>Không có tin nhắn nháp nào đang chờ duyệt.</span>
-        </div>
-        <div id="chat-draft-box" class="draft-box" style="display: none;">
-          <div class="draft-channel-badge" id="draft-channel">TEAM CHAT</div>
-          <p class="draft-text" id="draft-text">"Sova 40 HP at A Site"</p>
-          <div class="draft-actions">
-            <button id="btn-approve-chat" class="btn btn-success">✔ GỬI VÀO GAME</button>
-            <button id="btn-reject-chat" class="btn btn-danger">✖ HỦY</button>
+          <!-- Game Mic Slider -->
+          <div class="slider-group">
+            <div class="slider-header">
+              <div class="label-box">
+                <span class="ctrl-icon">🎙️</span>
+                <span class="ctrl-title">Âm Lượng Mic AI Vào Game</span>
+              </div>
+              <span id="mic-val" class="value-badge value-sakura">100%</span>
+            </div>
+            <div class="range-wrap">
+              <input type="range" id="mic-slider" min="0" max="200" value="100" class="range-slider slider-sakura">
+            </div>
+            <div class="range-ticks">
+              <span>0% (Im lặng)</span>
+              <span>100% (Chuẩn)</span>
+              <span>200% (Kích âm)</span>
+            </div>
           </div>
-        </div>
-      </section>
 
-      <!-- Card: Live Screen Stream & AI Voice Preset -->
-      <section class="card settings-card">
-        <div class="card-header">
-          <span class="card-tag">VISION & VOICE</span>
-          <h2>QUAY MÀN HÌNH & GIỌNG AI</h2>
-        </div>
-
-        <!-- Screen Stream FPS -->
-        <div class="setting-item">
-          <div class="setting-text">
-            <strong>Live Screen Stream FPS</strong>
-            <p>Tốc độ gửi ảnh màn hình thụ động sang Gemini Live</p>
-          </div>
-          <div class="fps-selector">
-            <button class="fps-btn" data-fps="1">1 FPS</button>
-            <button class="fps-btn active" data-fps="2">2 FPS</button>
-            <button class="fps-btn" data-fps="3">3 FPS</button>
-            <button class="fps-btn" data-fps="5">5 FPS</button>
-          </div>
-        </div>
-
-        <!-- Teammate In-Game Trigger Toggle -->
-        <div class="setting-item">
-          <div class="setting-text">
-            <strong>Đồng đội gọi 'Hey Gemini' trong Voice Chat</strong>
-            <p>Cho phép đồng đội trong trận hỏi và AI tự động trả lời qua mic game</p>
-          </div>
-          <div class="action-row">
-            <button id="btn-teammate-trigger" class="btn btn-warning active">
-              <span id="teammate-trigger-label">BẬT (ĐỒNG ĐỘI ĐƯỢC GỌI AI)</span>
+          <!-- Mute Game Mic Button -->
+          <div class="btn-cluster">
+            <button id="btn-mute" class="btn btn-mute-toggle">
+              <span class="btn-symbol">🔇</span>
+              <span id="mute-label">MUTE GIỌNG AI VÀO GAME (YÊN TÂM CLUTCH)</span>
             </button>
           </div>
         </div>
+      </section>
 
-        <!-- AI Voice Preset -->
-        <div class="setting-item">
-          <div class="setting-text">
-            <strong>Giọng đọc Gemini</strong>
-            <p>Chọn phong cách phát âm AI</p>
+      <!-- Card 2: Live Voice Chat Translated Subtitle Stream -->
+      <section class="pane card subtitle-card" data-section="subtitles">
+        <div class="pane-head">
+          <div class="pane-title">
+            <span class="pane-icon">💬</span> TRANSLATION STREAM • REAL-TIME
           </div>
-          <select id="voice-select" class="select-box">
-            <option value="Puck">Puck (Nam - Trầm, Rõ ràng)</option>
-            <option value="Charon">Charon (Nam - Trưởng thành, Quyết đoán)</option>
-            <option value="Aoede">Aoede (Nữ - Truyền cảm, Tự nhiên)</option>
-            <option value="Fenrir">Fenrir (Nam - Hùng hồn, Mạnh mẽ)</option>
-            <option value="Kore">Kore (Nữ - Nhẹ nhàng, Dịu êm)</option>
-          </select>
+          <span class="pane-tag tag-sakura">AI SUBTITLES</span>
+        </div>
+
+        <div class="pane-body stream-body">
+          <div class="subtitle-stream-feed" id="sub-feed">
+            <div class="feed-empty" id="feed-empty">
+              <div class="empty-sakura-flower">
+                <svg width="32" height="32" viewBox="0 0 24 24" aria-hidden="true">
+                  <g fill="rgba(255, 155, 184, 0.45)">
+                    <ellipse cx="12" cy="6" rx="2.6" ry="4.2"></ellipse>
+                    <ellipse cx="12" cy="6" rx="2.6" ry="4.2" transform="rotate(72 12 12)"></ellipse>
+                    <ellipse cx="12" cy="6" rx="2.6" ry="4.2" transform="rotate(144 12 12)"></ellipse>
+                    <ellipse cx="12" cy="6" rx="2.6" ry="4.2" transform="rotate(216 12 12)"></ellipse>
+                    <ellipse cx="12" cy="6" rx="2.6" ry="4.2" transform="rotate(288 12 12)"></ellipse>
+                  </g>
+                  <circle cx="12" cy="12" r="2.3" fill="rgba(255, 214, 227, 0.6)"></circle>
+                </svg>
+              </div>
+              <p>Đang lắng nghe voice chat đồng đội in-game...</p>
+              <small>Phụ đề dịch Tiếng Việt sẽ tự động chạy mượt mà tại đây</small>
+            </div>
+          </div>
         </div>
       </section>
 
-      <!-- Card: Connection QR Code for Phone -->
-      <section class="card qr-card">
-        <div class="card-header">
-          <span class="card-tag">LAN MOBILE CONNECT</span>
-          <h2>KẾT NỐI QUA ĐIỆN THOẠI</h2>
+      <!-- Card 3: Permission-Gated Chat Draft Approval -->
+      <section class="pane card chat-gate-card" data-section="tactical">
+        <div class="pane-head">
+          <div class="pane-title">
+            <span class="pane-icon">🛡️</span> PERMISSION GATE • CHAT APPROVAL
+          </div>
+          <span class="pane-tag tag-yellow">AN TOÀN TUYỆT ĐỐI</span>
         </div>
-        <div class="qr-content">
-          <img src="/api/qr" alt="Scan QR Code" class="qr-image">
-          <div class="qr-text">
-            <p>Quét mã bằng camera điện thoại trên cùng mạng Wi-Fi để điều khiển âm lượng từ xa khi đang chơi Valorant.</p>
-            <code class="qr-url">{{ local_url }}</code>
+
+        <div class="pane-body">
+          <div id="no-chat-msg" class="empty-gate">
+            <span class="shield-icon">🛡️</span>
+            <span>Không có tin nhắn nháp nào đang chờ duyệt.</span>
+            <small>AI chỉ gửi chat khi có sự đồng ý của bạn, chống toxic & troll game</small>
+          </div>
+
+          <div id="chat-draft-box" class="draft-panel" style="display: none;">
+            <div class="draft-meta">
+              <span class="draft-badge" id="draft-channel">TEAM CHAT</span>
+              <span class="draft-id-tag" id="draft-id-label">ID: #0000</span>
+            </div>
+            <div class="draft-content">
+              <p id="draft-text">"Sova 40 HP at A Site"</p>
+            </div>
+            <div class="draft-btn-row">
+              <button id="btn-approve-chat" class="btn btn-approve">
+                ✔ DUYỆT & GỬI VÀO GAME
+              </button>
+              <button id="btn-reject-chat" class="btn btn-reject">
+                ✖ TỪ CHỐI
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Card 4: 1-Touch Tactical Quick Callouts -->
+      <section class="pane card callout-card" data-section="tactical">
+        <div class="pane-head">
+          <div class="pane-title">
+            <span class="pane-icon">⚡</span> TACTICAL CALLOUTS • 1-TOUCH
+          </div>
+          <span class="pane-tag tag-green">FAST DISPATCH</span>
+        </div>
+
+        <div class="pane-body">
+          <div class="quick-callout-grid">
+            <button class="callout-pill" data-text="Địch đang đặt Spike tại site A, 2 người thủ">🚨 Spike Site A</button>
+            <button class="callout-pill" data-text="Địch đang đặt Spike tại site B, 2 người thủ">🚨 Spike Site B</button>
+            <button class="callout-pill" data-text="Địch đang rush nhanh Mid, cẩn thận">⚠️ Địch Rush Mid</button>
+            <button class="callout-pill" data-text="Site A an toàn, xoay cầu thủ sang site khác">🔄 Xoay Site</button>
+            <button class="callout-pill" data-text="Vòng này tiết kiệm tiền mua súng (Eco round)">💰 Eco Round</button>
+            <button class="callout-pill" data-text="Địch yếu máu ở A Main, có thể đẩy">🎯 Địch Yếu Máu A</button>
+            <button class="callout-pill" data-text="Địch đang save súng vòng này, đừng đẩy lẻ">🛡️ Địch Save Súng</button>
+            <button class="callout-pill" data-text="Cần Smoke chắn lối vào Site ngay">💨 Smoke Vào Site</button>
+          </div>
+
+          <div class="custom-callout-input">
+            <input type="text" id="custom-callout-text" placeholder="Nhập callout tùy chỉnh gửi vào in-game..." maxlength="150">
+            <button id="btn-send-custom-callout" class="btn btn-send-callout">GỬI</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Card 5: Vision Stream & Overlay Settings -->
+      <section class="pane card settings-card" data-section="settings">
+        <div class="pane-head">
+          <div class="pane-title">
+            <span class="pane-icon">⚙️</span> SYSTEM CONFIG • AI TUNING
+          </div>
+          <span class="pane-tag tag-purple">DXGI PASSIVE</span>
+        </div>
+
+        <div class="pane-body">
+          <!-- FPS Selector -->
+          <div class="setting-row">
+            <div class="setting-desc">
+              <strong>Tốc Độ Khung Hình DXGI</strong>
+              <p>Tốc độ chụp màn hình thụ động gửi sang Gemini Live</p>
+            </div>
+            <div class="fps-btn-group">
+              <button class="fps-btn" data-fps="1">1 FPS</button>
+              <button class="fps-btn active" data-fps="2">2 FPS</button>
+              <button class="fps-btn" data-fps="3">3 FPS</button>
+              <button class="fps-btn" data-fps="5">5 FPS</button>
+            </div>
+          </div>
+
+          <!-- Teammate Voice Trigger Toggle -->
+          <div class="setting-row">
+            <div class="setting-desc">
+              <strong>Đồng Đội Gọi 'Hey Gemini' In-Game</strong>
+              <p>AI lắng nghe và giải đáp chiến thuật qua mic game</p>
+            </div>
+            <button id="btn-teammate-trigger" class="btn-toggle active">
+              <span id="teammate-trigger-label">BẬT (ĐỒNG ĐỘI ĐƯỢC GỌI)</span>
+            </button>
+          </div>
+
+          <!-- Gemini Voice Preset -->
+          <div class="setting-row">
+            <div class="setting-desc">
+              <strong>Giọng Trợ Lý Gemini Live</strong>
+              <p>Phong cách âm điệu tự nhiên của trợ lý ảo</p>
+            </div>
+            <select id="voice-select" class="custom-select">
+              <option value="Puck">Puck (Nam - Trầm, Rõ ràng)</option>
+              <option value="Charon">Charon (Nam - Điềm đạm, Quyết đoán)</option>
+              <option value="Aoede">Aoede (Nữ - Truyền cảm, Tự nhiên)</option>
+              <option value="Fenrir">Fenrir (Nam - Hùng hồn, Uy lực)</option>
+              <option value="Kore">Kore (Nữ - Nhẹ nhàng, Tươi sáng)</option>
+            </select>
+          </div>
+
+          <!-- Overlay Mode Selector -->
+          <div class="setting-row">
+            <div class="setting-desc">
+              <strong>Kiểu Hiển Thị Desktop Overlay</strong>
+              <p>HUD thông báo tự ẩn (Toast 6s) hoặc Bảng cố định</p>
+            </div>
+            <select id="overlay-mode-select" class="custom-select">
+              <option value="notification">Dạng Thông Báo (Tự ẩn sau 6s - Khuyên dùng)</option>
+              <option value="card">Dạng Bảng Cố Định (Góc màn hình)</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- Card 6: QR Code & WAN Remote Link -->
+      <section class="pane card qr-card" data-section="settings">
+        <div class="pane-head">
+          <div class="pane-title">
+            <span class="pane-icon">🌐</span> REMOTE ACCESS • INTERNET & 4G/5G
+          </div>
+          <span class="pane-tag tag-yellow">WAN READY</span>
+        </div>
+        
+        <div class="pane-body">
+          <div class="qr-layout">
+            <div class="qr-box">
+              <img src="/api/qr" alt="Scan QR Code" class="qr-img">
+            </div>
+            <div class="qr-details">
+              <p class="qr-hint">Quét mã bằng camera điện thoại hoặc copy đường link để điều khiển rảnh tay khi đang chơi game:</p>
+              <div class="link-copy-box">
+                <input type="text" id="remote-link-input" readonly value="{{ local_url }}">
+                <button id="btn-copy-link" class="btn btn-copy">COPY LINK</button>
+              </div>
+              <small class="wan-note">💡 Kết nối ổn định qua 4G/5G, Wi-Fi ngoài quán cafe hoặc Tailscale VPN.</small>
+            </div>
           </div>
         </div>
       </section>
 
     </main>
 
+    <!-- Footer -->
     <footer class="footer">
-      <p>Valorant Voice AI Companion • 100% Riot Vanguard Compliant • Passive DXGI Stream & Integrated Virtual Cable</p>
+      <div class="footer-badge">🌸 SAKURA AI • 100% VANGUARD SAFE</div>
+      <p>Passive DXGI Screen Stream • WASAPI Loopback • Dual Audio Routing • Built-in Cable Driver • Zero Memory Patching</p>
     </footer>
+
   </div>
 
   <script src="/static/app.js"></script>
