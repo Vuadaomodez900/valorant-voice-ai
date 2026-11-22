@@ -234,6 +234,38 @@ def handle_tools_list(req_id: Any) -> Dict[str, Any]:
                     "pc_ip": {"type": "string", "description": "IP cụ thể của PC nếu bạn đã biết (để kiểm tra và lưu)"}
                 }
             }
+        },
+        {
+            "name": "auto_fix_valorant_app",
+            "description": "Tự động kích hoạt cơ chế Self-Healing trên PC: tự cài driver Virtual Cable còn thiếu, tự kết nối lại thiết bị âm thanh, tự khôi phục tunnel Internet và sửa lỗi hệ thống tức thì.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "host": {"type": "string", "description": "IP hoặc URL của PC (tùy chọn)"}
+                }
+            }
+        },
+        {
+            "name": "get_app_diagnostics",
+            "description": "Lấy báo cáo chẩn đoán chi tiết tình trạng sức khỏe của từng thành phần trên PC (Driver, Audio Router, Screen DXGI, Gemini Live API, Game process, Internet tunnel) kèm điểm sức khỏe và danh sách vấn đề phát hiện.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "host": {"type": "string", "description": "IP hoặc URL của PC (tùy chọn)"}
+                }
+            }
+        },
+        {
+            "name": "update_app_config",
+            "description": "Cho phép AI trực tiếp thay đổi và nạp nóng bất kỳ cấu hình nào của ứng dụng trên PC ngay lập tức mà không cần khởi động lại (ví dụ: 'gemini.api_key', 'audio.volume_headphone', 'screen.fps_live_stream', 'overlay.mode').",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "updates": {"type": "object", "description": "Từ điển key-value chứa các cài đặt cần cập nhật (ví dụ: {'overlay.mode': 'notification', 'audio.volume_headphone': 1.2})"},
+                    "host": {"type": "string", "description": "IP hoặc URL của PC (tùy chọn)"}
+                },
+                "required": ["updates"]
+            }
         }
     ]
     return {
@@ -369,6 +401,66 @@ def handle_tools_call(req_id: Any, name: str, args: Dict[str, Any]) -> Dict[str,
                     f"   1. Dùng Tailscale (khuyên dùng): Nhập IP Tailscale dạng 100.x.y.z (ví dụ: scan_and_connect_pc với pc_ip='100.85.12.34').\n"
                     f"   2. Dùng Cloudflare Tunnel / ngrok: Nhập URL public (ví dụ: pc_ip='https://xxx.trycloudflare.com')."
                 )
+    elif name == "auto_fix_valorant_app":
+        res = make_http_request("/api/auto-fix", method="POST", host=host, timeout=12.0)
+        if "error" in res:
+            text_result = f"❌ Lỗi khi tự sửa ứng dụng: {res['error']}"
+        else:
+            actions = res.get("actions_taken", [])
+            health = res.get("health_after_fix", 100)
+            status = res.get("status", "HEALTHY")
+            act_str = "\n".join([f"  + {a}" for a in actions]) if actions else "  + Mọi thành phần đều hoạt động bình thường, không cần sửa đổi."
+            text_result = (
+                f"🔧 KẾT QUẢ TỰ ĐỘNG SỬA LỖI & PHỤC HỒI (SELF-HEALING):\n"
+                f"- Điểm sức khỏe sau khi fix: {health}/100 ({status})\n"
+                f"- Các hành động đã thực hiện:\n{act_str}"
+            )
+
+    elif name == "get_app_diagnostics":
+        res = make_http_request("/api/diagnostics", method="GET", host=host)
+        if "error" in res:
+            text_result = f"❌ {res['error']}"
+        else:
+            score = res.get("health_score", 100)
+            status = res.get("status", "HEALTHY")
+            sub = res.get("subsystems", {})
+            issues = res.get("issues", [])
+            warnings = res.get("warnings", [])
+
+            sub_driver = "✅ ĐÃ CÀI ĐẶT" if sub.get("driver", {}).get("vbcable_installed") else "❌ CHƯA CÓ"
+            sub_audio = "✅ HOẠT ĐỘNG" if sub.get("audio", {}).get("running") else "❌ DỪNG"
+            sub_screen = f"✅ {sub.get('screen', {}).get('fps', 2)} FPS" if sub.get("screen", {}).get("running") else "❌ DỪNG"
+            sub_gemini = "✅ KẾT NỐI" if sub.get("gemini", {}).get("connected") else ("⚠️ CÓ KEY NHƯNG CHƯA KẾT NỐI" if sub.get("gemini", {}).get("has_key") else "⚠️ CHƯA CÓ KEY")
+            sub_tunnel = f"🌐 {sub.get('tunnel', {}).get('url')}" if sub.get("tunnel", {}).get("active") and sub.get("tunnel", {}).get("url") else "⚪ CHƯA BẬT"
+            sub_game = f"🎮 ĐANG CHƠI (PID: {sub.get('game', {}).get('pid')})" if sub.get("game", {}).get("valorant_running") else "⚪ CHƯA MỞ VALORANT"
+
+            issue_str = "\n".join([f"  - ❌ {i}" for i in issues]) if issues else "  - Không có lỗi nghiêm trọng."
+            warn_str = "\n".join([f"  - ⚠️ {w}" for w in warnings]) if warnings else ""
+
+            text_result = (
+                f"📊 BÁO CÁO CHẨN ĐOÁN HỆ THỐNG VALORANT VOICE AI:\n"
+                f"- Điểm sức khỏe: {score}/100 [{status}]\n"
+                f"- Virtual Cable Driver: {sub_driver}\n"
+                f"- Audio Router Streams: {sub_audio}\n"
+                f"- Screen Capture DXGI:  {sub_screen}\n"
+                f"- Gemini Live API:      {sub_gemini}\n"
+                f"- Internet Tunnel:      {sub_tunnel}\n"
+                f"- Tiến trình Valorant:  {sub_game}\n\n"
+                f"🚨 Vấn đề phát hiện:\n{issue_str}\n"
+            )
+            if warn_str:
+                text_result += f"\n💡 Cảnh báo:\n{warn_str}\n"
+            if issues:
+                text_result += "\n👉 Gợi ý: Hãy ra lệnh 'auto_fix_valorant_app' để hệ thống tự động sửa chữa ngay lập tức!"
+
+    elif name == "update_app_config":
+        updates = args.get("updates", {})
+        res = make_http_request("/api/config", method="POST", payload={"updates": updates}, host=host)
+        if "error" in res:
+            text_result = f"❌ Lỗi cập nhật cấu hình: {res['error']}"
+        else:
+            text_result = f"✅ AI đã áp dụng nóng cấu hình mới thành công:\n{json.dumps(updates, indent=2, ensure_ascii=False)}"
+
     else:
         text_result = f"Lỗi: Không tìm thấy tool '{name}'"
 

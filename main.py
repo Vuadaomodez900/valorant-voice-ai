@@ -28,6 +28,7 @@ from core.translator import VoiceChatTranslator
 from core.agy_bridge import GeminiLiveBridge
 from core.process_watcher import ProcessWatcher
 from core.in_game_chat import chat_manager
+from core.self_healer import self_healer
 from web_control.server import app as fastapi_app, bind_engine_components, ws_manager
 from gui.tray import SystemTrayManager
 
@@ -85,8 +86,9 @@ class ValorantVoiceAIOrchestrator:
             interval=cfg["process_watcher"]["check_interval"]
         )
 
-        # Wire Web Server to Engine
+        # Wire Web Server & Self-Healer to Engine
         bind_engine_components(self.router, self.screen_manager, self.bridge, self)
+        self_healer.bind_orchestrator(self)
 
         # 2. Inter-component Pipeline Wiring
         self._wire_pipelines()
@@ -238,6 +240,9 @@ class ValorantVoiceAIOrchestrator:
         print("=" * 60)
         print("  VALORANT VOICE AI COMPANION - STARTING ENGINES")
         print("=" * 60)
+
+        # 0. Zero-Touch Startup Auto-Configuration & Self-Healing
+        self_healer.auto_heal_on_startup()
 
         # 1. Start Audio Router
         cfg_audio = config.data["audio"]

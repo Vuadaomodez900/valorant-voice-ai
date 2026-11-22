@@ -305,5 +305,39 @@ class TestOverlayNotificationConfig(unittest.TestCase):
         self.assertEqual(overlay_cfg.get("position"), "top-center")
 
 
+class TestSelfHealer(unittest.TestCase):
+    """Verifies autonomous diagnostics, self-repair, and dynamic mutation API."""
+
+    def test_diagnose_system(self):
+        from core.self_healer import self_healer
+        diag = self_healer.diagnose_system()
+        self.assertIn("health_score", diag)
+        self.assertIn("status", diag)
+        self.assertIn("subsystems", diag)
+        self.assertIsInstance(diag["health_score"], int)
+        self.assertGreaterEqual(diag["health_score"], 0)
+        self.assertLessEqual(diag["health_score"], 100)
+
+    def test_auto_fix_system(self):
+        from core.self_healer import self_healer
+        res = self_healer.auto_fix_system()
+        self.assertTrue(res["success"])
+        self.assertIn("actions_taken", res)
+        self.assertIn("health_after_fix", res)
+
+    def test_update_runtime_config(self):
+        from core.self_healer import self_healer
+        updates = {"audio.volume_headphone": 1.25, "overlay.mode": "notification"}
+        res = self_healer.update_runtime_config(updates)
+        self.assertEqual(res["status"], "ok")
+        self.assertIn("audio.volume_headphone", res["applied_keys"])
+
+    def test_auto_heal_on_startup(self):
+        from core.self_healer import self_healer
+        logs = self_healer.auto_heal_on_startup()
+        self.assertIsInstance(logs, list)
+        self.assertGreater(len(logs), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

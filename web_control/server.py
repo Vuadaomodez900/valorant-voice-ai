@@ -27,6 +27,7 @@ import qrcode
 from core.config import config, get_resource_path
 from core.in_game_chat import chat_manager
 from core.cable_installer import is_vbcable_installed, install_vbcable_integrated
+from core.self_healer import self_healer
 
 app = FastAPI(title="Valorant Voice AI - LAN Control", docs_url=None, redoc_url=None)
 
@@ -122,6 +123,10 @@ class CalloutRequest(BaseModel):
     channel: str = "team"
     speak_in_game: bool = True
     speak_to_user: bool = True
+
+
+class ConfigUpdateRequest(BaseModel):
+    updates: Dict[str, Any]
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -268,6 +273,41 @@ async def handle_callout(req: CalloutRequest):
         "channel": draft.target_channel
     })
     return {"status": "ok", "draft_id": draft.draft_id, "content": draft.content}
+
+
+@app.get("/api/diagnostics")
+async def get_diagnostics():
+    """Returns complete system diagnostics, component health, and issues."""
+    return self_healer.diagnose_system()
+
+
+@app.post("/api/auto-fix")
+async def run_auto_fix():
+    """Autonomous Self-Healing: fixes drivers, audio streams, tunnels, and configuration."""
+    result = self_healer.auto_fix_system()
+    await ws_manager.broadcast({
+        "type": "system_healed",
+        "health_score": result.get("health_after_fix", 100),
+        "actions": result.get("actions_taken", [])
+    })
+    return result
+
+
+@app.get("/api/config")
+async def get_current_config():
+    """Returns live application configuration."""
+    return config.data
+
+
+@app.post("/api/config")
+async def update_runtime_config(req: ConfigUpdateRequest):
+    """Enables AI agents to dynamically change any configuration setting on the fly."""
+    result = self_healer.update_runtime_config(req.updates)
+    await ws_manager.broadcast({
+        "type": "config_updated",
+        "applied_keys": result.get("applied_keys", [])
+    })
+    return result
 
 
 @app.websocket("/ws")
