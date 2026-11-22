@@ -41,9 +41,21 @@ def save_configured_pc_host(host: str, port: int = DEFAULT_PORT) -> None:
         json.dump({"host": host.strip(), "port": port}, f, indent=2)
 
 
+def get_base_url(host: str = "") -> str:
+    """Resolves base URL supporting IPs, Tailscale (100.x.y.z), custom ports, or tunnels (https://)."""
+    target = host.strip() if host else get_configured_pc_host()
+    if not target:
+        target = "127.0.0.1"
+    if target.startswith("http://") or target.startswith("https://"):
+        return target.rstrip("/")
+    if ":" in target:
+        return f"http://{target}"
+    return f"http://{target}:{DEFAULT_PORT}"
+
+
 def make_http_request(endpoint: str, method: str = "GET", payload: Optional[Dict] = None, host: str = "", timeout: float = 3.0) -> Dict[str, Any]:
-    target_host = host.strip() if host else get_configured_pc_host()
-    url = f"http://{target_host}:{DEFAULT_PORT}{endpoint}"
+    base_url = get_base_url(host)
+    url = f"{base_url}{endpoint}"
 
     data = None
     headers = {"Content-Type": "application/json"}
@@ -329,12 +341,14 @@ def handle_tools_call(req_id: Any, name: str, args: Dict[str, Any]) -> Dict[str,
     elif name == "scan_and_connect_pc":
         direct_ip = args.get("pc_ip", "").strip()
         if direct_ip:
-            res = make_http_request("/api/status", host=direct_ip, timeout=2.0)
+            res = make_http_request("/api/status", host=direct_ip, timeout=3.0)
+            target_display = get_base_url(direct_ip)
             if "headphone_volume" in res:
                 save_configured_pc_host(direct_ip)
-                text_result = f"✅ Kết nối thành công đến PC tại {direct_ip}:{DEFAULT_PORT} và đã lưu làm mặc định!"
+                text_result = f"✅ Kết nối thành công đến PC tại {target_display} và đã lưu cấu hình làm mặc định!"
             else:
-                text_result = f"❌ Không thể xác nhận Valorant Voice AI tại {direct_ip}:{DEFAULT_PORT}. Kiểm tra app đã mở chưa."
+                err_msg = res.get("error", "Không phản hồi")
+                text_result = f"❌ Không thể xác nhận Valorant Voice AI tại {target_display} ({err_msg}). Kiểm tra app đã mở chưa."
         else:
             text_result = "🔍 Đang quét dải mạng Wi-Fi cục bộ để tìm PC..."
             found = scan_local_subnet()
@@ -347,10 +361,13 @@ def handle_tools_call(req_id: Any, name: str, args: Dict[str, Any]) -> Dict[str,
                 )
             else:
                 curr = get_configured_pc_host()
+                curr_display = get_base_url(curr)
                 text_result = (
                     f"⚠️ Không tìm thấy PC tự động trong mạng LAN hiện tại.\n"
-                    f"IP hiện đang lưu: {curr}:{DEFAULT_PORT}\n"
-                    f"👉 Vui lòng kiểm tra: PC và điện thoại phải cùng mạng Wi-Fi, hoặc mở app ValorantVoiceAI.exe trên PC và xem địa chỉ IP hiển thị trên màn hình."
+                    f"Địa chỉ hiện đang lưu: {curr_display}\n"
+                    f"👉 Nếu không chung Wi-Fi (dùng 4G/5G hoặc mạng khác):\n"
+                    f"   1. Dùng Tailscale (khuyên dùng): Nhập IP Tailscale dạng 100.x.y.z (ví dụ: scan_and_connect_pc với pc_ip='100.85.12.34').\n"
+                    f"   2. Dùng Cloudflare Tunnel / ngrok: Nhập URL public (ví dụ: pc_ip='https://xxx.trycloudflare.com')."
                 )
     else:
         text_result = f"Lỗi: Không tìm thấy tool '{name}'"

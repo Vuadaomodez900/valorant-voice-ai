@@ -261,5 +261,49 @@ class TestFastAPIWebServer(unittest.TestCase):
         self.assertIn("draft_id", data)
 
 
+class TestRemoteTunnel(unittest.TestCase):
+    """Verifies automated internet tunneling mechanisms."""
+
+    def test_tunnel_manager_init(self):
+        from core.remote_tunnel import RemoteTunnelManager
+        mgr = RemoteTunnelManager(local_port=8000)
+        self.assertEqual(mgr.local_port, 8000)
+        self.assertFalse(mgr.is_active)
+        self.assertIsNone(mgr.public_url)
+        mgr.stop_tunnel()
+        self.assertFalse(mgr.is_active)
+
+    def test_find_ssh(self):
+        from core.remote_tunnel import RemoteTunnelManager
+        mgr = RemoteTunnelManager()
+        ssh_bin = mgr.find_ssh()
+        if sys.platform != "win32":
+            self.assertIsNotNone(ssh_bin)
+
+
+class TestMCPUrlResolution(unittest.TestCase):
+    """Verifies MCP server and client smart URL resolution for WAN/LAN."""
+
+    def test_get_base_url_variants(self):
+        from tools.mcp_valorant_server import get_base_url
+        self.assertEqual(get_base_url("192.168.1.5"), "http://192.168.1.5:8000")
+        self.assertEqual(get_base_url("100.85.12.34"), "http://100.85.12.34:8000")
+        self.assertEqual(get_base_url("100.85.12.34:8080"), "http://100.85.12.34:8080")
+        self.assertEqual(get_base_url("https://abc.trycloudflare.com"), "https://abc.trycloudflare.com")
+        self.assertEqual(get_base_url("https://abc.trycloudflare.com/"), "https://abc.trycloudflare.com")
+        self.assertEqual(get_base_url("http://custom.ngrok.app"), "http://custom.ngrok.app")
+
+
+class TestOverlayNotificationConfig(unittest.TestCase):
+    """Verifies overlay configuration for notification toast mode."""
+
+    def test_overlay_mode_and_timing(self):
+        cfg = AppConfig("config.yaml")
+        overlay_cfg = cfg.data.get("overlay", {})
+        self.assertEqual(overlay_cfg.get("mode"), "notification")
+        self.assertEqual(overlay_cfg.get("notification_duration"), 6.0)
+        self.assertEqual(overlay_cfg.get("position"), "top-center")
+
+
 if __name__ == "__main__":
     unittest.main()

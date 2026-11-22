@@ -48,9 +48,14 @@ def get_default_pc_host() -> str:
 
 class PhoneTUIClient:
     def __init__(self, host: str, port: int = DEFAULT_PORT):
-        self.host = host
+        self.host = host.strip()
         self.port = port
-        self.base_url = f"http://{self.host}:{self.port}"
+        if self.host.startswith("http://") or self.host.startswith("https://"):
+            self.base_url = self.host.rstrip("/")
+        elif ":" in self.host:
+            self.base_url = f"http://{self.host}"
+        else:
+            self.base_url = f"http://{self.host}:{self.port}"
         self.running = True
         self.status_data = {}
         self.subtitles = []

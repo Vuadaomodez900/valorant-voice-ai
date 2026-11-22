@@ -25,20 +25,25 @@
    - Tự động kích hoạt phím Push-to-Talk (PTT) hoặc Open Mic khi AI giao tiếp.
 3. **Kích hoạt bằng giọng nói ngoại tuyến (Wake Word)**:
    - Nhận diện tức thì cụm từ **"Hey Gemini"** hoặc **"Hey Google"**, hỗ trợ ngắt lời (barge-in) mượt mà.
-4. **Dịch Voice Chat đồng đội sang Tiếng Việt (Non-Intrusive Overlay)**:
-   - Overlay trong suốt chạy ở tầng Windows DWM bằng **PyQt6**, tương thích hoàn hảo với chế độ **Borderless Windowed** của Valorant.
+4. **Dịch Voice Chat Đồng Đội Sang Tiếng Việt Dạng Thông Báo (Toast Notification HUD)**:
+   - Cửa sổ thông báo trong suốt chạy ở tầng Windows DWM bằng **PyQt6**, tương thích hoàn hảo với chế độ **Borderless Windowed** của Valorant.
+   - **Tự động ẩn hoàn toàn khi rảnh tay**: Không che khuất tâm ngắm, radar hay thanh máu khi không có voice chat.
+   - **Bật popup thông báo tức thì khi đồng đội nói**: Hiện phụ đề dịch Tiếng Việt nổi bật (`👉 "{translated}"`) ở mép trên màn hình (`top-center`), và **tự động ẩn sau 6 giây**.
    - Đặt cờ `SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)` để overlay **hoàn toàn vô hình** trong luồng quay màn hình của AI và OBS/Discord Stream.
-   - Tự động nhận diện voice chat đồng đội và hiển thị phụ đề Tiếng Việt mượt mà.
-5. **Duyệt gửi Chat In-Game có kiểm soát (Permission-Gated Chat)**:
+5. **Kết Nối Từ Xa Qua Internet Không Cần Chung Wi-Fi (WAN / 4G / 5G / Tailscale / Cloudflare Tunnel)**:
+   - Hỗ trợ kết nối máy tính từ điện thoại ngay cả khi không cùng mạng Wi-Fi.
+   - **1-Click Tạo Link Internet**: Bấm nút **`[ 🌐 TẠO LINK INTERNET (KHÔNG CẦN WI-FI) ]`** trên app PC hoặc chạy file `bat_ket_noi_internet.bat` để tự động tạo tunnel HTTPS bảo mật không cần mở port modem.
+   - Hỗ trợ mạng VPN riêng ảo **Tailscale** (`100.x.y.z`) với độ trễ P2P siêu thấp (<5ms).
+6. **Duyệt gửi Chat In-Game có kiểm soát (Permission-Gated Chat)**:
    - AI tuyệt đối không tự ý spam chat. Khi có thông tin chiến thuật (vd: *"Sova 40 HP A Main"*), bản nháp sẽ hiện lên Overlay/Web để bạn bấm **Duyệt (Gửi)** hoặc ra lệnh bằng giọng nói.
-6. **Bảng điều khiển từ xa qua mạng nội bộ (LAN Web Dashboard & QR Code)**:
+7. **Bảng điều khiển từ xa (Mobile Web Dashboard & QR Code)**:
    - Truy cập giao diện điều khiển bằng trình duyệt PC hoặc camera điện thoại quét mã QR.
    - Kéo thanh trượt âm lượng AI trong tai nghe (0–200%) và âm lượng AI vào game (0–200%).
    - Nút Mute nhanh giọng AI vào game, đổi giọng đọc Gemini (Puck, Charon, Aoede,...).
-7. **Tích hợp AGY CLI Trực Tiếp Ngay Trên Máy (Embedded AGY Shell & Remote Tools)**:
+8. **Tích hợp AGY CLI Trực Tiếp Ngay Trên Máy (Embedded AGY Shell & Remote Tools)**:
    - **Trên Windows**: Bấm nút **`[ 💻 MỞ AGY CLI TERMINAL ]`** trên giao diện hoặc chạy `ValorantVoiceAI.exe --cli` để mở console tương tác trực tiếp bằng bàn phím.
    - **Trên Điện Thoại (Termux)**: Cung cấp lệnh toàn cục `agy-valorant` (Interactive Shell), `agy-dashboard` (TUI Live Screen), bộ lệnh nhanh `quick_action.sh`, và MCP Server `valorant-voice-ops` để chat điều khiển tự nhiên với AGY.
-8. **Chạy ngầm khay hệ thống (System Tray)**:
+9. **Chạy ngầm khay hệ thống (System Tray)**:
    - Đóng cửa sổ chính sẽ tự động thu gọn xuống System Tray cạnh đồng hồ Windows để tiết kiệm diện tích.
 
 ---

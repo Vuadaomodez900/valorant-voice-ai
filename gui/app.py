@@ -136,6 +136,16 @@ class QuickConfigApp:
         self.overlay_switch.select() if config.data["overlay"]["enabled"] else self.overlay_switch.deselect()
         self.overlay_switch.pack(anchor="w", pady=4)
 
+        current_mode = config.data["overlay"].get("mode", "notification")
+        default_val = "Dạng Thông Báo (Tự ẩn sau khi dịch)" if current_mode == "notification" else "Dạng Bảng Cố Định (Góc màn hình)"
+        self.overlay_mode_combo = ctk.CTkComboBox(
+            left_frame,
+            values=["Dạng Thông Báo (Tự ẩn sau khi dịch)", "Dạng Bảng Cố Định (Góc màn hình)"],
+            width=340
+        )
+        self.overlay_mode_combo.set(default_val)
+        self.overlay_mode_combo.pack(anchor="w", padx=24, pady=(2, 6))
+
         self.ptt_switch = ctk.CTkSwitch(left_frame, text="Tự động mở mic game khi AI nói (Auto PTT)")
         self.ptt_switch.select() if config.data["audio"]["auto_mic_trigger"] else self.ptt_switch.deselect()
         self.ptt_switch.pack(anchor="w", pady=4)
@@ -173,11 +183,22 @@ class QuickConfigApp:
         qr_img = qr.make_image(fill_color="#FF4655", back_color="#1E293B").convert("RGB")
 
         ctk_qr = ctk.CTkImage(light_image=qr_img, dark_image=qr_img, size=(160, 160))
-        qr_display = ctk.CTkLabel(right_frame, text="", image=ctk_qr)
-        qr_display.pack(pady=8)
+        self.qr_display = ctk.CTkLabel(right_frame, text="", image=ctk_qr)
+        self.qr_display.pack(pady=8)
 
-        url_label = ctk.CTkLabel(right_frame, text=web_url, font=ctk.CTkFont(size=11), text_color="#00F5D4")
-        url_label.pack(pady=(0, 16))
+        self.url_label = ctk.CTkLabel(right_frame, text=web_url, font=ctk.CTkFont(size=11), text_color="#00F5D4")
+        self.url_label.pack(pady=(0, 12))
+
+        # 1-Click Internet Tunnel Button (No Wi-Fi needed)
+        self.internet_btn = ctk.CTkButton(
+            right_frame,
+            text="🌐 TẠO LINK INTERNET (KHÔNG CẦN WI-FI)\n(Dùng 4G/5G hoặc mạng khác kết nối)",
+            fg_color="#1D4ED8",
+            hover_color="#2563EB",
+            font=ctk.CTkFont(weight="bold"),
+            command=self.activate_internet_tunnel
+        )
+        self.internet_btn.pack(fill="x", padx=16, pady=(0, 12))
 
         # AGY CLI Terminal on Machine Button
         cli_btn = ctk.CTkButton(
@@ -295,6 +316,8 @@ class QuickConfigApp:
             config.data["wake_word"]["enabled"] = bool(self.wake_switch.get())
         if self.overlay_switch:
             config.data["overlay"]["enabled"] = bool(self.overlay_switch.get())
+        if hasattr(self, "overlay_mode_combo") and self.overlay_mode_combo:
+            config.data["overlay"]["mode"] = "notification" if "Thông Báo" in self.overlay_mode_combo.get() else "card"
         if self.ptt_switch:
             config.data["audio"]["auto_mic_trigger"] = bool(self.ptt_switch.get())
         if self.teammate_trigger_switch:
@@ -315,6 +338,39 @@ class QuickConfigApp:
             print("[GUI] Launched AGY CLI terminal console.")
         except Exception as e:
             print(f"[GUI] Error launching AGY CLI: {e}")
+
+    def activate_internet_tunnel(self) -> None:
+        """Starts remote tunnel and updates QR code / URL."""
+        if hasattr(self, "internet_btn") and self.internet_btn:
+            self.internet_btn.configure(state="disabled", text="⏳ Đang tạo link kết nối Internet...")
+
+        from core.remote_tunnel import tunnel_manager
+
+        def on_ready(url: str):
+            if self.root:
+                self.root.after(0, lambda: self._on_remote_url_ready(url))
+
+        tunnel_manager.start_tunnel(on_url_ready=on_ready)
+
+    def _on_remote_url_ready(self, url: str) -> None:
+        if hasattr(self, "internet_btn") and self.internet_btn:
+            self.internet_btn.configure(state="normal", text="✅ ĐÃ KẾT NỐI INTERNET!\n(Bấm để tạo link mới)")
+        if hasattr(self, "url_label") and self.url_label:
+            self.url_label.configure(text=f"🌐 {url}", text_color="#38BDF8")
+
+        # Update QR code with the internet link
+        try:
+            import qrcode
+            from PIL import Image
+            qr = qrcode.QRCode(box_size=4, border=2)
+            qr.add_data(url)
+            qr.make(fit=True)
+            qr_img = qr.make_image(fill_color="#38BDF8", back_color="#1E293B").convert("RGB")
+            ctk_qr = ctk.CTkImage(light_image=qr_img, dark_image=qr_img, size=(160, 160))
+            if hasattr(self, "qr_display") and self.qr_display:
+                self.qr_display.configure(image=ctk_qr)
+        except Exception as e:
+            print(f"[GUI] QR update error: {e}")
 
     def hide_to_tray(self) -> None:
         """Hides GUI window to let it run smoothly in the background."""

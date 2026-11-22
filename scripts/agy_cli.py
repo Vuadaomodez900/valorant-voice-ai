@@ -56,7 +56,12 @@ class AGYInteractiveShell:
 
     @property
     def base_url(self) -> str:
-        return f"http://{self.host}:{self.port}"
+        target = self.host.strip()
+        if target.startswith("http://") or target.startswith("https://"):
+            return target.rstrip("/")
+        if ":" in target:
+            return f"http://{target}"
+        return f"http://{target}:{self.port}"
 
     def api_get(self, endpoint: str) -> dict:
         try:
