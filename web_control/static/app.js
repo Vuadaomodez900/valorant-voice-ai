@@ -68,6 +68,10 @@ function initWebSocket() {
         showChatDraft(data.draft_id, data.content, data.channel);
       } else if (data.type === "subtitle") {
         appendSubtitleFeed(data.original, data.translated);
+      } else if (data.type === "lipsync") {
+        updateAvatarLipsync(data.data);
+      } else if (data.type === "ai_reply") {
+        if (avatarSpeechText) avatarSpeechText.textContent = `"${data.response}"`;
       } else if (data.type === "system_healed" || data.type === "config_updated") {
         fetchStatus();
         fetchDiagnostics();
@@ -398,6 +402,116 @@ navTabs.forEach(tab => {
     });
   });
 });
+
+// 12. Sakura Live2D / SVG Avatar Lip-Sync & Emotion
+const mouthPath = document.getElementById("avatar-mouth-path");
+const eyesGroup = document.getElementById("avatar-eyes");
+const eyesClosedGroup = document.getElementById("avatar-eyes-closed");
+const avatarStatusPill = document.getElementById("avatar-status-pill");
+const avatarSpeechText = document.getElementById("avatar-speech-text");
+const fastAiPrompt = document.getElementById("fast-ai-prompt");
+const btnFastAiSend = document.getElementById("btn-fast-ai-send");
+const aiProviderSelect = document.getElementById("ai-provider-select");
+
+function updateAvatarLipsync(state) {
+  if (!state) return;
+  const mouthOpen = state.mouth_open || 0.0;
+  const blink = state.blink || false;
+  const emotion = state.emotion || "neutral";
+
+  // Blinking
+  if (eyesGroup && eyesClosedGroup) {
+    if (blink) {
+      eyesGroup.style.display = "none";
+      eyesClosedGroup.style.display = "block";
+    } else {
+      eyesGroup.style.display = "block";
+      eyesClosedGroup.style.display = "none";
+    }
+  }
+
+  // Mouth morphing
+  if (mouthPath) {
+    if (mouthOpen > 0.45) {
+      // Wide open (A, O)
+      const h = 140 + Math.round(mouthOpen * 14);
+      mouthPath.setAttribute("d", `M 90 138 Q 100 ${h} 110 138 Z`);
+    } else if (mouthOpen > 0.15) {
+      // Partial open (E, I, U)
+      const h = 140 + Math.round(mouthOpen * 8);
+      mouthPath.setAttribute("d", `M 92 139 Q 100 ${h} 108 139`);
+    } else {
+      // Closed smile
+      mouthPath.setAttribute("d", "M 93 140 Q 100 144 107 140");
+    }
+  }
+
+  // Emotion status badge
+  if (avatarStatusPill) {
+    if (emotion === "speaking") {
+      avatarStatusPill.textContent = "💬 ĐANG NÓI";
+      avatarStatusPill.className = "pane-tag tag-sakura";
+    } else if (emotion === "listening") {
+      avatarStatusPill.textContent = "👂 ĐANG NGHE";
+      avatarStatusPill.className = "pane-tag tag-blue";
+    } else if (emotion === "alert") {
+      avatarStatusPill.textContent = "🚨 BÁO ĐỘNG";
+      avatarStatusPill.className = "pane-tag tag-red";
+    } else {
+      avatarStatusPill.textContent = "🌸 SẴN SÀNG";
+      avatarStatusPill.className = "pane-tag tag-green";
+    }
+  }
+}
+
+// Fast AI Chat
+if (btnFastAiSend && fastAiPrompt) {
+  btnFastAiSend.addEventListener("click", async () => {
+    const text = fastAiPrompt.value.trim();
+    if (!text) return;
+    fastAiPrompt.value = "";
+    if (avatarSpeechText) avatarSpeechText.textContent = "Đang phân tích chiến thuật (<15ms)...";
+    try {
+      const res = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: text })
+      });
+      const data = await res.json();
+      if (avatarSpeechText && data.response) {
+        avatarSpeechText.textContent = `"${data.response}"`;
+      }
+    } catch (e) {
+      if (avatarSpeechText) avatarSpeechText.textContent = "Lỗi kết nối: " + e;
+    }
+  });
+
+  fastAiPrompt.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") btnFastAiSend.click();
+  });
+}
+
+// AI Provider Selector
+if (aiProviderSelect) {
+  fetch("/api/ai/provider")
+    .then(r => r.json())
+    .then(data => {
+      if (data.provider) aiProviderSelect.value = data.provider;
+    })
+    .catch(() => {});
+
+  aiProviderSelect.addEventListener("change", async (e) => {
+    const provider = e.target.value;
+    try {
+      await fetch("/api/ai/provider", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider })
+      });
+      alert(`Đã chuyển đổi AI Backend sang: ${e.target.options[e.target.selectedIndex].text}`);
+    } catch (err) {}
+  });
+}
 
 // Initialize on Load
 document.addEventListener("DOMContentLoaded", () => {

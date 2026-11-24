@@ -339,5 +339,50 @@ class TestSelfHealer(unittest.TestCase):
         self.assertGreater(len(logs), 0)
 
 
+class TestLipSyncAndFastAI(unittest.TestCase):
+    """Verifies Lip-Sync viseme analyzer, fast tactical cache, and AI router."""
+
+    def test_lipsync_audio_feeding_and_viseme(self):
+        from core.lipsync import LipSyncAnalyzer
+        analyzer = LipSyncAnalyzer()
+        # Feed silent chunk
+        silent_chunk = np.zeros(320, dtype=np.int16)
+        state_silent = analyzer.feed_audio_chunk(silent_chunk)
+        self.assertIn("mouth_open", state_silent)
+        self.assertIn("viseme", state_silent)
+        self.assertIn("blink", state_silent)
+        self.assertEqual(state_silent["viseme"], "closed")
+
+        # Feed loud speech chunk (10000 amplitude)
+        loud_chunk = (np.sin(np.linspace(0, 100, 480)) * 12000).astype(np.int16)
+        state_loud = analyzer.feed_audio_chunk(loud_chunk, is_ai_speaking=True)
+        self.assertGreater(state_loud["mouth_open"], 0.0)
+        self.assertEqual(state_loud["emotion"], "speaking")
+        analyzer.stop()
+
+    def test_fast_tactical_cache_matching(self):
+        from core.fast_ai_router import FastTacticalCache
+        cache = FastTacticalCache()
+
+        t0 = time.time()
+        spike_ans = cache.match("Spike đặt ở đâu rồi?")
+        duration_ms = (time.time() - t0) * 1000.0
+
+        self.assertIsNotNone(spike_ans)
+        self.assertIn("Spike", spike_ans)
+        self.assertLess(duration_ms, 15.0) # Guaranteed <15ms
+
+        eco_ans = cache.match("vòng này có nên eco hay buy không?")
+        self.assertIsNotNone(eco_ans)
+        self.assertIn("Eco", eco_ans)
+
+    def test_ai_router_provider_switching(self):
+        from core.fast_ai_router import ai_router
+        ai_router.set_provider("antigravity_cli", model="gemini-2.0-flash")
+        self.assertEqual(ai_router.current_provider, "antigravity_cli")
+        ai_router.set_provider("claude_code")
+        self.assertEqual(ai_router.current_provider, "claude_code")
+
+
 if __name__ == "__main__":
     unittest.main()

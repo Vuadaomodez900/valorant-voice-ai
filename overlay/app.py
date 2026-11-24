@@ -30,6 +30,7 @@ except ImportError:
     QApplication = None
 
 from core.config import config
+from core.lipsync import lipsync_analyzer
 
 # Windows Win32 API Constants
 WDA_EXCLUDEFROMCAPTURE = 0x00000011
@@ -82,17 +83,18 @@ class OverlaySignals(QObject):
     gemini_response_received = pyqtSignal(str)
     chat_draft_received = pyqtSignal(dict)
     status_updated = pyqtSignal(str)
+    viseme_received = pyqtSignal(dict)
 
 
 class ValorantOverlayWindow(QMainWindow):
-    """Modern translucent HUD overlay with toast notification & card modes."""
+    """Modern translucent HUD overlay with toast notification, card, and tamagotchi desktop pet modes."""
 
     def __init__(self, click_through: bool = True, opacity: float = 0.92):
         super().__init__()
         cfg_overlay = config.data.get("overlay", {})
         self.is_click_through = cfg_overlay.get("click_through", click_through)
         self.window_opacity = cfg_overlay.get("opacity", opacity)
-        self.mode = cfg_overlay.get("mode", "notification")  # "notification" or "card"
+        self.mode = cfg_overlay.get("mode", "notification")  # "notification", "tamagotchi", or "card"
         self.duration = float(cfg_overlay.get("notification_duration", 6.0))
         self.position = cfg_overlay.get("position", "top-center")
 
@@ -101,8 +103,13 @@ class ValorantOverlayWindow(QMainWindow):
         self.signals.gemini_response_received.connect(self.display_gemini_response)
         self.signals.chat_draft_received.connect(self.display_chat_draft)
         self.signals.status_updated.connect(self.update_status_bar)
+        self.signals.viseme_received.connect(self.update_avatar_viseme)
+
+        # Connect lipsync subscriber
+        lipsync_analyzer.register_subscriber(lambda s: self.signals.viseme_received.emit(s))
 
         self.current_draft_id: Optional[str] = None
+        self._drag_pos = None
 
         # Auto-dismiss timer for notification mode
         self.toast_timer = QTimer(self)
@@ -123,6 +130,8 @@ class ValorantOverlayWindow(QMainWindow):
 
         if self.mode == "notification":
             self._init_notification_ui()
+        elif self.mode == "tamagotchi":
+            self._init_tamagotchi_ui()
         else:
             self._init_card_ui()
 
@@ -229,6 +238,127 @@ class ValorantOverlayWindow(QMainWindow):
 
         # Reposition according to preference
         self.reposition()
+
+    def _init_tamagotchi_ui(self) -> None:
+        """Initializes interactive transparent Desktop Pet (Tamagotchi) window with Lip-Sync."""
+        self.resize(300, 360)
+
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        main_layout = QVBoxLayout(central_widget)
+        main_layout.setContentsMargins(6, 6, 6, 6)
+        main_layout.setSpacing(6)
+
+        # Floating Speech / Thought Bubble (above avatar)
+        self.pet_bubble = QFrame()
+        self.pet_bubble.setStyleSheet("""
+            QFrame {
+                background-color: rgba(23, 18, 33, 235);
+                border: 2px solid #FF8FAB;
+                border-radius: 12px;
+            }
+        """)
+        bubble_layout = QVBoxLayout(self.pet_bubble)
+        bubble_layout.setContentsMargins(10, 8, 10, 8)
+        bubble_layout.setSpacing(2)
+
+        self.pet_name_badge = QLabel("🌸 SAKURA AI • DESKTOP PET")
+        self.pet_name_badge.setFont(QFont("Segoe UI", 8, QFont.Weight.Bold))
+        self.pet_name_badge.setStyleSheet("color: #FF8FAB; border: none; background: transparent;")
+        bubble_layout.addWidget(self.pet_name_badge)
+
+        self.pet_speech_label = QLabel("Chào bạn! Mình là Sakura, trợ lý ảo đồng hành cùng bạn.")
+        self.pet_speech_label.setWordWrap(True)
+        self.pet_speech_label.setFont(QFont("Segoe UI", 9, QFont.Weight.Medium))
+        self.pet_speech_label.setStyleSheet("color: #ECE7F5; border: none; background: transparent;")
+        bubble_layout.addWidget(self.pet_speech_label)
+        main_layout.addWidget(self.pet_bubble)
+
+        # Interactive Avatar Frame
+        self.avatar_frame = QFrame()
+        self.avatar_frame.setStyleSheet("""
+            QFrame {
+                background: qradialgradient(cx:0.5, cy:0.5, radius:0.5, fx:0.5, fy:0.5,
+                    stop:0 rgba(255, 143, 171, 0.25), stop:1 rgba(23, 18, 33, 0));
+                border: none;
+            }
+        """)
+        avatar_layout = QVBoxLayout(self.avatar_frame)
+        avatar_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # Visual avatar illustration / emoji representation with lip-sync states
+        self.avatar_visual_label = QLabel("🌸( ◕ ‿ ◕ )🌸")
+        self.avatar_visual_label.setFont(QFont("Segoe UI", 28, QFont.Weight.Bold))
+        self.avatar_visual_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.avatar_visual_label.setStyleSheet("color: #FF8FAB; border: none; background: transparent;")
+        avatar_layout.addWidget(self.avatar_visual_label)
+
+        # Avatar state badge
+        self.avatar_state_badge = QLabel("🌸 IDLE • SẴN SÀNG")
+        self.avatar_state_badge.setFont(QFont("Segoe UI", 8, QFont.Weight.Bold))
+        self.avatar_state_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.avatar_state_badge.setStyleSheet("""
+            color: #9ECE6A;
+            background-color: rgba(158, 206, 106, 30);
+            border: 1px solid rgba(158, 206, 106, 120);
+            border-radius: 9px;
+            padding: 2px 8px;
+        """)
+        avatar_layout.addWidget(self.avatar_state_badge)
+        main_layout.addWidget(self.avatar_frame)
+
+        self.reposition()
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        if event.buttons() == Qt.MouseButton.LeftButton and self._drag_pos is not None:
+            self.move(event.globalPosition().toPoint() - self._drag_pos)
+            event.accept()
+
+    def mouseDoubleClickEvent(self, event):
+        """Double clicking pet triggers instant voice interaction or quick callout."""
+        if self.mode == "tamagotchi":
+            from core.fast_ai_router import ai_router
+            ai_router.query_fast("Báo cáo tình hình chiến thuật")
+            event.accept()
+
+    def update_avatar_viseme(self, data: dict):
+        """Updates avatar face, eyes, and mouth shapes based on real-time audio visemes."""
+        if self.mode != "tamagotchi" or not hasattr(self, "avatar_visual_label"):
+            return
+        mouth_open = data.get("mouth_open", 0.0)
+        blink = data.get("blink", False)
+        emotion = data.get("emotion", "neutral")
+
+        # Select eyes
+        eyes = "-  -" if blink else "◕  ◕"
+
+        # Select mouth based on viseme
+        if mouth_open > 0.4:
+            mouth = "▽"
+        elif mouth_open > 0.15:
+            mouth = "‿"
+        else:
+            mouth = "·"
+
+        self.avatar_visual_label.setText(f"🌸( {eyes[0:2]} {mouth} {eyes[3:]} )🌸")
+
+        if emotion == "alert":
+            self.avatar_state_badge.setText("🚨 BÁO ĐỘNG IN-GAME")
+            self.avatar_state_badge.setStyleSheet("color: #FF4655; background: rgba(255, 70, 85, 40); border: 1px solid #FF4655; border-radius: 9px; padding: 2px 8px;")
+        elif emotion == "speaking":
+            self.avatar_state_badge.setText("💬 ĐANG TRẢ LỜI")
+            self.avatar_state_badge.setStyleSheet("color: #FF8FAB; background: rgba(255, 143, 171, 40); border: 1px solid #FF8FAB; border-radius: 9px; padding: 2px 8px;")
+        elif emotion == "listening":
+            self.avatar_state_badge.setText("👂 ĐANG LẮNG NGHE")
+            self.avatar_state_badge.setStyleSheet("color: #7AA2F7; background: rgba(122, 162, 247, 40); border: 1px solid #7AA2F7; border-radius: 9px; padding: 2px 8px;")
+        else:
+            self.avatar_state_badge.setText("🌸 IDLE • SẴN SÀNG")
+            self.avatar_state_badge.setStyleSheet("color: #9ECE6A; background: rgba(158, 206, 106, 30); border: 1px solid rgba(158, 206, 106, 120); border-radius: 9px; padding: 2px 8px;")
 
     def _init_card_ui(self) -> None:
         """Initializes classic fixed card HUD (pinned at top-right)."""
@@ -411,6 +541,10 @@ class ValorantOverlayWindow(QMainWindow):
             self.reposition()
             self.show()
             self.toast_timer.start(int(self.duration * 1000))
+        elif self.mode == "tamagotchi":
+            if hasattr(self, "pet_speech_label"):
+                self.pet_speech_label.setText(f"🗣️ {original}\n👉 {translated}")
+                self.show()
         else:
             self.subtitle_label.setText(f"<b>{original}</b><br><span style='color: #00FF88;'>👉 {translated}</span>")
 
@@ -436,6 +570,10 @@ class ValorantOverlayWindow(QMainWindow):
             self.reposition()
             self.show()
             self.toast_timer.start(int(self.duration * 1000))
+        elif self.mode == "tamagotchi":
+            if hasattr(self, "pet_speech_label"):
+                self.pet_speech_label.setText(f"💬 {text}")
+                self.show()
         else:
             self.ai_response_label.setText(text)
 

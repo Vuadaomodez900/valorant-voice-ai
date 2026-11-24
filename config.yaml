@@ -64,9 +64,28 @@ gemini:
     3. If asked to translate teammates' voice, translate faithfully into Vietnamese.
     4. If preparing an in-game chat message, draft it concisely. Never send without explicit approval.
 
+ai:
+  # Provider backend: "antigravity_cli", "gemini_live", "claude_code", "codex", "direct_api"
+  provider: "antigravity_cli"
+  # Antigravity CLI / Local Model Gateway (OmniRoute standard: http://127.0.0.1:20128/v1)
+  antigravity_gateway_url: "http://127.0.0.1:20128/v1"
+  model: "gemini-2.0-flash"
+  api_key: ""
+  fast_tactical_cache: true
+
+tamagotchi:
+  enabled: true
+  pet_name: "Sakura"
+  character_theme: "sakura_ai"
+  avatar_size: [280, 360]
+  click_through: false # click on pet to interact / talk
+  always_on_top: true
+  lipsync_enabled: true
+  idle_animation: true
+
 overlay:
   enabled: true
-  mode: "notification"       # "notification" (popup dạng thông báo tự ẩn khi dịch) hoặc "card" (bảng cố định)
+  mode: "notification"       # "notification" (popup tự ẩn), "tamagotchi" (pet desktop ảo), hoặc "card" (bảng)
   notification_duration: 6.0 # Thời gian tự động ẩn thông báo sau khi dịch (giây)
   position: "top-center"     # "top-center" (giữa trên màn hình - tối ưu cho game thủ), "top-right", "bottom-center"
   opacity: 0.92

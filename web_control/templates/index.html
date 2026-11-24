@@ -102,7 +102,118 @@
 
     <!-- Main Grid Dashboard -->
     <main class="main-grid">
-      
+
+      <!-- Card 0: Interactive Sakura Live2D / SVG Avatar with Lip-Sync -->
+      <section class="pane card avatar-card" data-section="all">
+        <div class="pane-head">
+          <div class="pane-title">
+            <span class="pane-icon">🌸</span> SAKURA AI • LIVE2D PET & LIP-SYNC AVATAR
+          </div>
+          <span class="pane-tag tag-sakura" id="avatar-status-pill">🌸 SẴN SÀNG</span>
+        </div>
+
+        <div class="pane-body avatar-body">
+          <div class="avatar-stage">
+            <!-- Animated SVG / Live2D Character Canvas -->
+            <div class="avatar-canvas-wrap">
+              <svg id="sakura-avatar-svg" class="sakura-avatar-svg" viewBox="0 0 200 240" width="180" height="216">
+                <defs>
+                  <radialGradient id="auraGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#FF8FAB" stop-opacity="0.35"/>
+                    <stop offset="100%" stop-color="#1D1829" stop-opacity="0"/>
+                  </radialGradient>
+                  <linearGradient id="hairGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#FFD6E3"/>
+                    <stop offset="60%" stop-color="#FF8FAB"/>
+                    <stop offset="100%" stop-color="#E06287"/>
+                  </linearGradient>
+                  <linearGradient id="skinGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#FFF5F7"/>
+                    <stop offset="100%" stop-color="#FFE0E9"/>
+                  </linearGradient>
+                </defs>
+
+                <!-- Glowing Aura Behind Avatar -->
+                <circle cx="100" cy="115" r="95" fill="url(#auraGlow)" class="avatar-aura"/>
+
+                <!-- Body / Shoulders & Kimono Collar -->
+                <path d="M 40 230 C 50 185 80 180 100 180 C 120 180 150 185 160 230 Z" fill="#241E34" stroke="#352C48" stroke-width="2"/>
+                <path d="M 75 180 L 100 215 L 125 180" fill="none" stroke="#FF8FAB" stroke-width="3" stroke-linecap="round"/>
+
+                <!-- Long Twin-Tail Hair Back -->
+                <path d="M 42 100 C 20 130 18 190 32 225 C 40 200 42 160 48 125 Z" fill="url(#hairGrad)" opacity="0.9" class="hair-sway-left"/>
+                <path d="M 158 100 C 180 130 182 190 168 225 C 160 200 158 160 152 125 Z" fill="url(#hairGrad)" opacity="0.9" class="hair-sway-right"/>
+
+                <!-- Head / Face -->
+                <ellipse cx="100" cy="118" rx="46" ry="52" fill="url(#skinGrad)" stroke="#FFB6C8" stroke-width="1.2"/>
+                
+                <!-- Cute Anime Cheeks (Blush) -->
+                <ellipse cx="74" cy="132" rx="8" ry="4" fill="#FF8FAB" opacity="0.45"/>
+                <ellipse cx="126" cy="132" rx="8" ry="4" fill="#FF8FAB" opacity="0.45"/>
+
+                <!-- Eyes (Blinking Element) -->
+                <g id="avatar-eyes" class="avatar-eyes">
+                  <!-- Left Eye -->
+                  <ellipse id="eye-l-white" cx="76" cy="116" rx="10" ry="13" fill="#FFFFFF"/>
+                  <ellipse id="eye-l-pupil" cx="77" cy="117" rx="7" ry="10" fill="#2A1420"/>
+                  <circle cx="75" cy="113" r="3" fill="#FFFFFF"/>
+                  <circle cx="79" cy="120" r="1.5" fill="#FF8FAB"/>
+                  <path d="M 64 105 C 72 98 84 103 88 108" fill="none" stroke="#2A1420" stroke-width="2.5" stroke-linecap="round"/>
+
+                  <!-- Right Eye -->
+                  <ellipse id="eye-r-white" cx="124" cy="116" rx="10" ry="13" fill="#FFFFFF"/>
+                  <ellipse id="eye-r-pupil" cx="123" cy="117" rx="7" ry="10" fill="#2A1420"/>
+                  <circle cx="121" cy="113" r="3" fill="#FFFFFF"/>
+                  <circle cx="125" cy="120" r="1.5" fill="#FF8FAB"/>
+                  <path d="M 136 105 C 128 98 116 103 112 108" fill="none" stroke="#2A1420" stroke-width="2.5" stroke-linecap="round"/>
+                </g>
+
+                <!-- Closed Eyes Line (Hidden by default, shown during blink) -->
+                <g id="avatar-eyes-closed" style="display: none;">
+                  <path d="M 66 116 Q 76 123 86 116" fill="none" stroke="#2A1420" stroke-width="2.5" stroke-linecap="round"/>
+                  <path d="M 114 116 Q 124 123 134 116" fill="none" stroke="#2A1420" stroke-width="2.5" stroke-linecap="round"/>
+                </g>
+
+                <!-- Nose -->
+                <ellipse cx="100" cy="128" rx="1" ry="1.5" fill="#E08B9F"/>
+
+                <!-- Mouth (Animated Viseme Lip-Sync) -->
+                <g id="avatar-mouth-group">
+                  <path id="avatar-mouth-path" d="M 93 140 Q 100 144 107 140" fill="#E06287" stroke="#2A1420" stroke-width="1.8" stroke-linecap="round"/>
+                </g>
+
+                <!-- Front Hair Bangs -->
+                <path d="M 54 90 C 70 70 130 70 146 90 C 146 90 140 108 128 108 C 118 108 114 96 100 96 C 86 96 82 108 72 108 C 60 108 54 90 54 90 Z" fill="url(#hairGrad)"/>
+                
+                <!-- Sakura Blossom Hair Accessory -->
+                <g transform="translate(136, 75) scale(0.65)">
+                  <ellipse cx="12" cy="6" rx="3.5" ry="5.5" fill="#FFD6E3"/>
+                  <ellipse cx="12" cy="6" rx="3.5" ry="5.5" fill="#FFD6E3" transform="rotate(72 12 12)"/>
+                  <ellipse cx="12" cy="6" rx="3.5" ry="5.5" fill="#FFD6E3" transform="rotate(144 12 12)"/>
+                  <ellipse cx="12" cy="6" rx="3.5" ry="5.5" fill="#FFD6E3" transform="rotate(216 12 12)"/>
+                  <ellipse cx="12" cy="6" rx="3.5" ry="5.5" fill="#FFD6E3" transform="rotate(288 12 12)"/>
+                  <circle cx="12" cy="12" r="3.2" fill="#FF8FAB"/>
+                </g>
+              </svg>
+            </div>
+
+            <!-- Live Speech Bubble & Direct Fast Chat Input -->
+            <div class="avatar-interactive-pane">
+              <div class="avatar-bubble" id="avatar-bubble">
+                <span class="bubble-tag">SAKURA COMPANION VOICE</span>
+                <p id="avatar-speech-text">"Chào bạn! Mình là Sakura. Bạn có thể hỏi nhanh chiến thuật hoặc dùng Antigravity CLI / Codex rảnh tay!"</p>
+              </div>
+
+              <!-- Direct Fast AI Query Input -->
+              <div class="fast-chat-input-row">
+                <input type="text" id="fast-ai-prompt" placeholder="Hỏi Sakura về chiến thuật, eco, vị trí..." maxlength="120">
+                <button id="btn-fast-ai-send" class="btn btn-fast-send">HỎI (<15MS)</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- Card 1: Dual Audio Routing Controls -->
       <section class="pane card audio-card" data-section="audio">
         <div class="pane-head">
@@ -323,15 +434,31 @@
             </select>
           </div>
 
+          <!-- AI Inference Provider -->
+          <div class="setting-row">
+            <div class="setting-desc">
+              <strong>AI Backend & Cổng Xử Lý (Inference)</strong>
+              <p>Chạy qua Antigravity CLI, Codex, Claude Code hoặc API Key</p>
+            </div>
+            <select id="ai-provider-select" class="custom-select">
+              <option value="antigravity_cli">Antigravity CLI (OmniRoute :20128 - Tự động)</option>
+              <option value="claude_code">Claude Code (Antigravity Bridge)</option>
+              <option value="codex">Codex AI Engine</option>
+              <option value="gemini_live">Google Gemini Live API (Multimodal)</option>
+              <option value="direct_api">Direct API Key (Custom)</option>
+            </select>
+          </div>
+
           <!-- Overlay Mode Selector -->
           <div class="setting-row">
             <div class="setting-desc">
-              <strong>Kiểu Hiển Thị Desktop Overlay</strong>
-              <p>HUD thông báo tự ẩn (Toast 6s) hoặc Bảng cố định</p>
+              <strong>Kiểu Hiển Thị Desktop Overlay & Pet</strong>
+              <p>Nuôi Pet Tamagotchi (có Lip-Sync) hoặc HUD Thông báo 6s</p>
             </div>
             <select id="overlay-mode-select" class="custom-select">
-              <option value="notification">Dạng Thông Báo (Tự ẩn sau 6s - Khuyên dùng)</option>
-              <option value="card">Dạng Bảng Cố Định (Góc màn hình)</option>
+              <option value="tamagotchi">🌸 Nuôi Pet Desktop (Tamagotchi Trong Suốt - Có Lip-Sync)</option>
+              <option value="notification">🔔 Dạng Thông Báo (Tự ẩn sau 6s - Khuyên dùng)</option>
+              <option value="card">📊 Dạng Bảng Cố Định (Góc màn hình)</option>
             </select>
           </div>
         </div>

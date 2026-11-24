@@ -56,9 +56,26 @@ DEFAULT_CONFIG: Dict[str, Any] = {
             "4. If drafting a team chat message, always keep it short, polite, and tactical."
         ),
     },
+    "ai": {
+        "provider": "antigravity_cli",  # "antigravity_cli", "gemini_live", "claude_code", "codex", "direct_api"
+        "antigravity_gateway_url": "http://127.0.0.1:20128/v1",
+        "model": "gemini-2.0-flash",
+        "api_key": "",
+        "fast_tactical_cache": True,
+    },
+    "tamagotchi": {
+        "enabled": True,
+        "pet_name": "Sakura",
+        "character_theme": "sakura_ai",
+        "avatar_size": [280, 360],
+        "click_through": False,
+        "always_on_top": True,
+        "lipsync_enabled": True,
+        "idle_animation": True,
+    },
     "overlay": {
         "enabled": True,
-        "mode": "notification",
+        "mode": "notification",  # "notification", "tamagotchi", or "card"
         "notification_duration": 6.0,
         "position": "top-center",
         "opacity": 0.92,

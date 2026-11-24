@@ -284,6 +284,56 @@ fn cmd_auto_fix(host: &str) {
     }
 }
 
+fn cmd_provider(host: &str, provider: Option<&str>) {
+    let base = resolve_base_url(host);
+    if let Some(p) = provider {
+        let url = format!("{}/api/ai/provider", base);
+        println!("Đang đổi AI Provider sang: {}...", p);
+        match http_post(&url, &json!({ "provider": p })) {
+            Ok(_) => println!("✅ Đã chuyển đổi AI Provider sang: '{}' thành công!", p),
+            Err(e) => eprintln!("❌ {}", e),
+        }
+    } else {
+        let url = format!("{}/api/ai/provider", base);
+        match http_get(&url) {
+            Ok(d) => {
+                let p = d.get("provider").and_then(|v| v.as_str()).unwrap_or("antigravity_cli");
+                let m = d.get("model").and_then(|v| v.as_str()).unwrap_or("gemini-2.0-flash");
+                let gw = d.get("gateway_url").and_then(|v| v.as_str()).unwrap_or("http://127.0.0.1:20128/v1");
+                println!("🤖 AI BACKEND INFERENCE:");
+                println!("  - Provider: {}", p);
+                println!("  - Model:    {}", m);
+                println!("  - Gateway:  {}", gw);
+            }
+            Err(e) => eprintln!("❌ {}", e),
+        }
+    }
+}
+
+fn cmd_pet(host: &str, mode: Option<&str>) {
+    let base = resolve_base_url(host);
+    let target_mode = mode.unwrap_or("tamagotchi");
+    let url = format!("{}/api/tamagotchi/mode", base);
+    println!("Đang chuyển đổi kiểu Overlay sang: {}...", target_mode);
+    match http_post(&url, &json!({ "mode": target_mode })) {
+        Ok(_) => println!("✅ Đã chuyển đổi kiểu Desktop Overlay sang: '{}'!", target_mode),
+        Err(e) => eprintln!("❌ {}", e),
+    }
+}
+
+fn cmd_fast_chat(host: &str, prompt: &str) {
+    let base = resolve_base_url(host);
+    let url = format!("{}/api/ai/chat", base);
+    println!("💬 Hỏi Sakura AI: \"{}\"...", prompt);
+    match http_post(&url, &json!({ "prompt": prompt })) {
+        Ok(res) => {
+            let reply = res.get("response").and_then(|v| v.as_str()).unwrap_or("");
+            println!("🌸 SAKURA AI: {}", reply);
+        }
+        Err(e) => eprintln!("❌ {}", e),
+    }
+}
+
 fn cmd_scan(target: Option<&str>) {
     if let Some(tgt) = target {
         let base = resolve_base_url(tgt);
@@ -453,6 +503,42 @@ fn run_mcp_server() {
                                     },
                                     "required": ["updates"]
                                 }
+                            },
+                            {
+                                "name": "set_ai_provider",
+                                "description": "Chuyển đổi backend AI (antigravity_cli, claude_code, codex, gemini_live, direct_api) để giao tiếp nhanh hơn.",
+                                "inputSchema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "provider": { "type": "string", "enum": ["antigravity_cli", "claude_code", "codex", "gemini_live", "direct_api"] },
+                                        "host": { "type": "string" }
+                                    },
+                                    "required": ["provider"]
+                                }
+                            },
+                            {
+                                "name": "set_desktop_pet_mode",
+                                "description": "Chuyển đổi kiểu Desktop Overlay: tamagotchi (nuôi pet ảo trong suốt có lip-sync), notification (toast tự ẩn), hoặc card.",
+                                "inputSchema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "mode": { "type": "string", "enum": ["tamagotchi", "notification", "card"] },
+                                        "host": { "type": "string" }
+                                    },
+                                    "required": ["mode"]
+                                }
+                            },
+                            {
+                                "name": "fast_tactical_chat",
+                                "description": "Hỏi đáp chiến thuật in-game siêu tốc (<15ms) qua cache hoặc Antigravity CLI / Gemini.",
+                                "inputSchema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "prompt": { "type": "string", "description": "Câu hỏi chiến thuật cần AI giải đáp" },
+                                        "host": { "type": "string" }
+                                    },
+                                    "required": ["prompt"]
+                                }
                             }
                         ]
                     }
@@ -542,6 +628,33 @@ fn run_mcp_server() {
                             Err(e) => format!("❌ {}", e),
                         }
                     }
+                    "set_ai_provider" => {
+                        let provider = args.get("provider").and_then(|v| v.as_str()).unwrap_or("antigravity_cli");
+                        let url = format!("{}/api/ai/provider", base);
+                        match http_post(&url, &json!({ "provider": provider })) {
+                            Ok(_) => format!("✅ Đã chuyển đổi AI Backend sang: {}", provider),
+                            Err(e) => format!("❌ {}", e),
+                        }
+                    }
+                    "set_desktop_pet_mode" => {
+                        let mode = args.get("mode").and_then(|v| v.as_str()).unwrap_or("tamagotchi");
+                        let url = format!("{}/api/tamagotchi/mode", base);
+                        match http_post(&url, &json!({ "mode": mode })) {
+                            Ok(_) => format!("✅ Đã chuyển đổi Desktop Overlay sang: {}", mode),
+                            Err(e) => format!("❌ {}", e),
+                        }
+                    }
+                    "fast_tactical_chat" => {
+                        let prompt = args.get("prompt").and_then(|v| v.as_str()).unwrap_or("");
+                        let url = format!("{}/api/ai/chat", base);
+                        match http_post(&url, &json!({ "prompt": prompt })) {
+                            Ok(res) => {
+                                let reply = res.get("response").and_then(|v| v.as_str()).unwrap_or("");
+                                format!("🌸 SAKURA AI: {}", reply)
+                            }
+                            Err(e) => format!("❌ {}", e),
+                        }
+                    }
                     "scan_and_connect_pc" => {
                         if let Some(target) = args.get("pc_ip").and_then(|v| v.as_str()) {
                             let b = resolve_base_url(target);
@@ -602,6 +715,9 @@ fn print_usage() {
     println!("------------------------------------------------------------");
     println!("Cách dùng:");
     println!("  valorant-tool status            Xem trạng thái kết nối và âm lượng");
+    println!("  valorant-tool provider [name]   Xem hoặc đổi AI Backend (antigravity_cli/claude_code/codex/gemini_live)");
+    println!("  valorant-tool pet [mode]        Đổi chế độ Desktop Pet (tamagotchi/notification/card)");
+    println!("  valorant-tool chat <prompt>     Hỏi đáp chiến thuật nhanh (<15ms)");
     println!("  valorant-tool mute              Mute giọng AI vào mic game");
     println!("  valorant-tool unmute            Unmute giọng AI vào mic game");
     println!("  valorant-tool vol <hp> [mic]    Chỉnh âm lượng (ví dụ: 1.2 là 120%)");
@@ -632,6 +748,18 @@ fn main() {
 
     match cmd.as_str() {
         "status" => cmd_status(host),
+        "provider" | "backend" => {
+            let prov = args.get(2).map(|s| s.as_str());
+            cmd_provider(host, prov);
+        }
+        "pet" | "tamagotchi" => {
+            let mode = args.get(2).map(|s| s.as_str());
+            cmd_pet(host, mode);
+        }
+        "chat" | "ask" => {
+            let prompt = args.get(2).map(|s| s.as_str()).unwrap_or("Tình hình chiến thuật?");
+            cmd_fast_chat(host, prompt);
+        }
         "mute" => cmd_mute(host, true),
         "unmute" => cmd_mute(host, false),
         "vol" | "volume" => {

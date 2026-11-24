@@ -13,6 +13,7 @@ Controls:
 
 import socket
 import io
+import asyncio
 import threading
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -28,6 +29,8 @@ from core.config import config, get_resource_path
 from core.in_game_chat import chat_manager
 from core.cable_installer import is_vbcable_installed, install_vbcable_integrated
 from core.self_healer import self_healer
+from core.lipsync import lipsync_analyzer
+from core.fast_ai_router import ai_router
 
 app = FastAPI(title="Valorant Voice AI - LAN Control", docs_url=None, redoc_url=None)
 
@@ -127,6 +130,41 @@ class CalloutRequest(BaseModel):
 
 class ConfigUpdateRequest(BaseModel):
     updates: Dict[str, Any]
+
+
+class AIProviderRequest(BaseModel):
+    provider: str  # "antigravity_cli", "gemini_live", "claude_code", "codex", "direct_api"
+    api_key: Optional[str] = ""
+    model: Optional[str] = ""
+
+
+class AIChatRequest(BaseModel):
+    prompt: str
+
+
+class TamagotchiModeRequest(BaseModel):
+    mode: str  # "tamagotchi", "notification", "card"
+
+
+main_event_loop = None
+
+
+@app.on_event("startup")
+async def startup_event():
+    global main_event_loop
+    try:
+        main_event_loop = asyncio.get_running_loop()
+    except Exception:
+        main_event_loop = None
+
+    def on_viseme(state: dict):
+        if main_event_loop and main_event_loop.is_running() and ws_manager.active_connections:
+            asyncio.run_coroutine_threadsafe(
+                ws_manager.broadcast({"type": "lipsync", "data": state}),
+                main_event_loop
+            )
+
+    lipsync_analyzer.register_subscriber(on_viseme)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -308,6 +346,54 @@ async def update_runtime_config(req: ConfigUpdateRequest):
         "applied_keys": result.get("applied_keys", [])
     })
     return result
+
+
+@app.get("/api/ai/provider")
+async def get_ai_provider():
+    """Returns currently active AI backend provider and model."""
+    cfg = config.data.get("ai", {})
+    return {
+        "provider": ai_router.current_provider,
+        "model": cfg.get("model", "gemini-2.0-flash"),
+        "gateway_url": cfg.get("antigravity_gateway_url", "http://127.0.0.1:20128/v1"),
+        "has_api_key": bool(cfg.get("api_key"))
+    }
+
+
+@app.post("/api/ai/provider")
+async def set_ai_provider(req: AIProviderRequest):
+    """Dynamically switches AI provider (Antigravity CLI / Codex / Claude Code / Gemini Live / API Key)."""
+    ai_router.set_provider(req.provider, req.api_key or "", req.model or "")
+    await ws_manager.broadcast({
+        "type": "provider_changed",
+        "provider": req.provider,
+        "model": req.model
+    })
+    return {"status": "ok", "provider": req.provider}
+
+
+@app.post("/api/ai/chat")
+async def send_fast_chat(req: AIChatRequest):
+    """Low-latency streaming chat query with instant tactical cache and lip-sync."""
+    reply = ai_router.query_fast(req.prompt)
+    await ws_manager.broadcast({
+        "type": "ai_reply",
+        "prompt": req.prompt,
+        "response": reply
+    })
+    return {"status": "ok", "response": reply}
+
+
+@app.post("/api/tamagotchi/mode")
+async def set_tamagotchi_mode(req: TamagotchiModeRequest):
+    """Switches overlay between tamagotchi (desktop pet), notification (toast), and card modes."""
+    config.data["overlay"]["mode"] = req.mode
+    config.save()
+    await ws_manager.broadcast({
+        "type": "overlay_mode_changed",
+        "mode": req.mode
+    })
+    return {"status": "ok", "mode": req.mode}
 
 
 @app.websocket("/ws")

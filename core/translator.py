@@ -13,9 +13,11 @@ import queue
 from typing import Callable, List, Optional, Dict
 import numpy as np
 
+from core.lipsync import lipsync_analyzer
+
 
 class VoiceChatTranslator:
-    """Detects voice activity from loopback audio and translates speech to Vietnamese."""
+    """Detects voice activity from loopback audio and translates speech to Vietnamese with ultra-low latency."""
 
     def __init__(self, target_lang: str = "vi", vad_threshold: float = 800.0):
         self.target_lang = target_lang
@@ -25,8 +27,8 @@ class VoiceChatTranslator:
 
         self._current_utterance: List[np.ndarray] = []
         self._silence_frames = 0
-        self._max_silence_frames = 15  # ~1.2s silence ends utterance
-        self._min_speech_frames = 8    # ~640ms min speech duration
+        self._max_silence_frames = 5   # ~400ms silence ends utterance (snappy, ultra-low latency)
+        self._min_speech_frames = 4    # ~320ms min speech duration
 
         self.subscribers: List[Callable[[Dict], None]] = []
         self._worker_thread: Optional[threading.Thread] = None
@@ -70,6 +72,7 @@ class VoiceChatTranslator:
                 # Active speech detected
                 self._current_utterance.append(chunk)
                 self._silence_frames = 0
+                lipsync_analyzer.feed_audio_chunk(chunk, is_ai_speaking=False)
             else:
                 if len(self._current_utterance) > 0:
                     self._silence_frames += 1
@@ -83,9 +86,11 @@ class VoiceChatTranslator:
 
     def _process_utterance(self, audio_data: np.ndarray) -> None:
         """Transcribes and translates speech into Vietnamese."""
-        # Common tactical Valorant callouts quick dictionary for ultra-low latency:
-        # In a full run, this is also augmented with Gemini translation
         text_original, text_translated = self._quick_tactical_translate(audio_data)
+
+        # Alert state for avatar if critical spike or enemy rush
+        if any(w in text_translated.lower() for w in ["spike", "địch", "rush", "bắn"]):
+            lipsync_analyzer.set_emotion("alert")
 
         subtitle_payload = {
             "speaker": "Teammate (Voice)",
