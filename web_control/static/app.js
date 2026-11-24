@@ -780,7 +780,67 @@ fetch("/api/game/profiles")
   })
   .catch(() => {});
 
+// ========================================================
+// USER AUTH & SECURITY STATUS
+// ========================================================
+
+const userProfileBox = document.getElementById("user-profile-box");
+const loginButtonsBox = document.getElementById("login-buttons-box");
+const userAvatarImg = document.getElementById("user-avatar-img");
+const userDisplayName = document.getElementById("user-display-name");
+const userProviderBadge = document.getElementById("user-provider-badge");
+const btnAuthLogout = document.getElementById("btn-auth-logout");
+
+async function fetchUserProfile() {
+  try {
+    const res = await fetch("/api/auth/me");
+    const data = await res.json();
+    if (data.authenticated && data.user) {
+      if (userProfileBox) userProfileBox.style.display = "flex";
+      if (loginButtonsBox) loginButtonsBox.style.display = "none";
+      if (userDisplayName) userDisplayName.textContent = data.user.display_name || data.user.username;
+      if (userProviderBadge) userProviderBadge.textContent = data.user.provider.toUpperCase();
+      if (userAvatarImg) {
+        userAvatarImg.src = data.user.avatar_url || "https://cdn.discordapp.com/embed/avatars/0.png";
+      }
+    } else {
+      if (userProfileBox) userProfileBox.style.display = "none";
+      if (loginButtonsBox) loginButtonsBox.style.display = "flex";
+    }
+  } catch (e) {
+    if (loginButtonsBox) loginButtonsBox.style.display = "flex";
+  }
+}
+
+if (btnAuthLogout) {
+  btnAuthLogout.addEventListener("click", async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      fetchUserProfile();
+    } catch (e) {}
+  });
+}
+
+async function fetchSecurityStatus() {
+  try {
+    const res = await fetch("/api/security/status");
+    const data = await res.json();
+    const secAntiDebug = document.getElementById("sec-anti-debug");
+    if (secAntiDebug) {
+      if (data.debugger_detected) {
+        secAntiDebug.innerHTML = "🚨 Debugger: <strong>Detected!</strong>";
+        secAntiDebug.style.color = "#f87171";
+      } else {
+        secAntiDebug.innerHTML = "🛡️ Anti-Debugger: <strong>Active</strong>";
+        secAntiDebug.style.color = "#4ade80";
+      }
+    }
+  } catch (e) {}
+}
+
 // Initialize on Load
 document.addEventListener("DOMContentLoaded", () => {
   initWebSocket();
+  fetchUserProfile();
+  fetchSecurityStatus();
 });

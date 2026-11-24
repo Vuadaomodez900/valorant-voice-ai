@@ -110,6 +110,18 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "chat_translation": True,
         "auto_tips": True,
     },
+    "auth": {
+        "enabled": True,
+        "allow_guest": True,
+        "discord": {"client_id": "", "client_secret": ""},
+        "github": {"client_id": "", "client_secret": ""},
+        "google": {"client_id": "", "client_secret": ""},
+    },
+    "security": {
+        "anti_tamper": True,
+        "anti_debugger": True,
+        "mask_secrets_in_logs": True,
+    },
 }
 
 

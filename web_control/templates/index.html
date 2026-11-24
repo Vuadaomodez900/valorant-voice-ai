@@ -63,6 +63,29 @@
 
       <!-- Status Cluster -->
       <div class="status-cluster">
+        <!-- User Auth Badge & Social Login Buttons -->
+        <div id="user-auth-cluster" class="user-auth-cluster">
+          <div id="user-profile-box" class="user-profile-box" style="display: none;">
+            <img id="user-avatar-img" class="user-avatar-img" src="" alt="Avatar">
+            <div class="user-meta">
+              <span id="user-display-name" class="user-display-name">Commander</span>
+              <span id="user-provider-badge" class="provider-badge">Discord</span>
+            </div>
+            <button id="btn-auth-logout" class="btn-logout" title="Đăng xuất">⏻</button>
+          </div>
+          <div id="login-buttons-box" class="login-buttons-box">
+            <a href="/api/auth/login/discord" class="btn-oauth btn-discord" title="Đăng nhập Discord">
+              <span class="oauth-icon">👾</span> Discord
+            </a>
+            <a href="/api/auth/login/github" class="btn-oauth btn-github" title="Đăng nhập GitHub">
+              <span class="oauth-icon">🐙</span> GitHub
+            </a>
+            <a href="/api/auth/login/google" class="btn-oauth btn-google" title="Đăng nhập Google">
+              <span class="oauth-icon">🔍</span> Google
+            </a>
+          </div>
+        </div>
+
         <!-- System Health Pill -->
         <div id="health-pill" class="health-badge" title="Tình trạng hệ thống và AI Self-Healing">
           <span class="health-dot"></span>
@@ -559,6 +582,18 @@
               <option value="notification">🔔 Dạng Thông Báo (Tự ẩn sau 6s - Khuyên dùng)</option>
               <option value="card">📊 Dạng Bảng Cố Định (Góc màn hình)</option>
             </select>
+          </div>
+
+          <!-- Security & Code Protection Status -->
+          <div class="setting-row">
+            <div class="setting-desc">
+              <strong>Bảo Mật & Chống Dịch Ngược (Anti-Tamper)</strong>
+              <p>Mã hóa chuỗi bộ nhớ, chặn debugger (x64dbg/IDA), che giấu API keys</p>
+            </div>
+            <div class="security-badges" id="security-badges-container">
+              <span class="security-pill" id="sec-anti-debug">🛡️ Anti-Debugger: <strong>Active</strong></span>
+              <span class="security-pill" id="sec-leak-guard">🔒 Sanitizer: <strong>Active</strong></span>
+            </div>
           </div>
         </div>
       </section>

@@ -463,5 +463,83 @@ class TestMultiGameAndMinecraft(unittest.TestCase):
         self.assertEqual(len(watcher.on_profile_change_callbacks), 1)
 
 
+class TestSecurityAndOAuth(unittest.TestCase):
+    """Verifies Anti-Tamper engine, Data Leak Sanitizer, and OAuth2 session signing."""
+
+    def test_data_leak_sanitization(self):
+        from core.security import sanitize_data_payload, mask_secret_string
+
+        # Test secret string masking
+        masked = mask_secret_string("sk-1234567890abcdef1234567890abcdef")
+        self.assertTrue(masked.startswith("sk-"))
+        self.assertTrue(masked.endswith("def"))
+        self.assertIn("****", masked)
+
+        # Test dictionary sanitization
+        sensitive_payload = {
+            "api_key": "AIzaSyD-1234567890abcdef1234567890",
+            "client_secret": "super_secret_discord_oauth_secret",
+            "normal_data": "public_username",
+            "nested": {
+                "password": "my_secure_password_123",
+                "logs": "Raw key sk-99999999999999999999999999999999 detected"
+            }
+        }
+        sanitized = sanitize_data_payload(sensitive_payload)
+        self.assertNotIn("AIzaSyD-1234567890abcdef1234567890", str(sanitized))
+        self.assertNotIn("super_secret_discord_oauth_secret", str(sanitized))
+        self.assertNotIn("my_secure_password_123", str(sanitized))
+        self.assertEqual(sanitized["normal_data"], "public_username")
+
+    def test_in_memory_obfuscated_string(self):
+        from core.security import ObfuscatedString
+        secret_text = "VanguardSafeSecretToken_2026"
+        obf = ObfuscatedString(secret_text, key_seed=0x42)
+        # Representation should be masked
+        self.assertIn("[Protected]", repr(obf))
+        # Plaintext should not be in the internal raw bytes directly
+        self.assertNotIn(b"VanguardSafeSecretToken_2026", obf._encoded)
+        # Reveal decrypts accurately
+        self.assertEqual(obf.reveal(), secret_text)
+
+    def test_integrity_guard_and_timing(self):
+        from core.security import security_guard, verify_timing_integrity
+        self.assertTrue(verify_timing_integrity())
+        check = security_guard.self_check()
+        self.assertIn("is_secure", check)
+        self.assertIn("debugger_detected", check)
+        self.assertIn("timing_integrity", check)
+
+    def test_oauth_authorization_urls(self):
+        from core.auth import auth_manager
+        redirect_uri = "http://127.0.0.1:8000/api/auth/callback/discord"
+        url = auth_manager.generate_authorization_url("discord", redirect_uri)
+        self.assertTrue("discord" in url or "mock-login" in url)
+
+    def test_session_token_cryptographic_signing_and_tampering(self):
+        from core.auth import auth_manager, UserSession
+        user = UserSession(
+            user_id="user_test_99",
+            username="TestPlayer",
+            display_name="Test Commander",
+            email="test@game.local",
+            avatar_url="",
+            provider="github",
+            role="admin"
+        )
+        token = auth_manager.issue_session_token(user)
+        self.assertIn(".", token)
+
+        # Verify valid token
+        verified = auth_manager.verify_session_token(token)
+        self.assertIsNotNone(verified)
+        self.assertEqual(verified.username, "TestPlayer")
+        self.assertEqual(verified.provider, "github")
+
+        # Test Tampering detection (altering signature or payload)
+        tampered_token = token[:-4] + "ffff"
+        self.assertIsNone(auth_manager.verify_session_token(tampered_token))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -18,8 +18,8 @@ import threading
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request, Depends, Cookie
+from fastapi.responses import HTMLResponse, JSONResponse, Response, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
@@ -33,6 +33,8 @@ from core.lipsync import lipsync_analyzer
 from core.fast_ai_router import ai_router
 from core.game_profiles import game_profile_manager
 from core.minecraft_agent import minecraft_agent
+from core.security import security_guard, sanitize_data_payload
+from core.auth import auth_manager, UserSession
 
 app = FastAPI(title="Valorant Voice AI - LAN Control", docs_url=None, redoc_url=None)
 
@@ -368,8 +370,9 @@ async def handle_callout(req: CalloutRequest):
 
 @app.get("/api/diagnostics")
 async def get_diagnostics():
-    """Returns complete system diagnostics, component health, and issues."""
-    return self_healer.diagnose_system()
+    """Returns complete system diagnostics, component health, and issues (sanitized against secret leaks)."""
+    diag = self_healer.diagnose_system()
+    return sanitize_data_payload(diag)
 
 
 @app.post("/api/auto-fix")
@@ -381,13 +384,13 @@ async def run_auto_fix():
         "health_score": result.get("health_after_fix", 100),
         "actions": result.get("actions_taken", [])
     })
-    return result
+    return sanitize_data_payload(result)
 
 
 @app.get("/api/config")
 async def get_current_config():
-    """Returns live application configuration."""
-    return config.data
+    """Returns live application configuration (sanitized against secret leaks)."""
+    return sanitize_data_payload(config.data)
 
 
 @app.post("/api/config")
@@ -540,6 +543,128 @@ async def configure_minecraft_particle(req: MinecraftParticleRequest):
         density=req.density
     )
     return res
+
+
+# =============================================================================
+# Security & Anti-Tamper Status
+# =============================================================================
+
+@app.get("/api/security/status")
+async def get_security_status():
+    """Returns runtime anti-debugging, anti-tamper, and integrity evaluation."""
+    return security_guard.self_check()
+
+
+# =============================================================================
+# OAuth2 Social Login & Session Management (Discord, GitHub, Google)
+# =============================================================================
+
+@app.get("/api/auth/providers")
+async def get_auth_providers():
+    """Lists available social OAuth2 providers and their configuration status."""
+    providers = {}
+    for p in ["discord", "github", "google"]:
+        creds = auth_manager.get_provider_credentials(p)
+        providers[p] = {
+            "name": p.capitalize(),
+            "has_credentials": bool(creds["client_id"] and creds["client_secret"]),
+            "client_id_preview": creds["client_id"][:6] + "..." if creds["client_id"] else "None (Dev Mode Available)"
+        }
+    return {
+        "providers": providers,
+        "allow_guest": config.data.get("auth", {}).get("allow_guest", True)
+    }
+
+
+@app.get("/api/auth/login/{provider}")
+async def oauth_login_redirect(provider: str, request: Request):
+    """Initiates OAuth2 login by redirecting to provider's authorization portal."""
+    base_url = str(request.base_url).rstrip("/")
+    redirect_uri = f"{base_url}/api/auth/callback/{provider}"
+    try:
+        auth_url = auth_manager.generate_authorization_url(provider, redirect_uri)
+        # If client requested JSON (e.g. from AJAX), return URL; otherwise redirect directly
+        accept = request.headers.get("accept", "")
+        if "application/json" in accept:
+            return {"status": "ok", "auth_url": auth_url}
+        return RedirectResponse(url=auth_url, status_code=303)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/auth/callback/{provider}")
+async def oauth_callback(provider: str, code: str = "", state: str = ""):
+    """Handles OAuth2 redirect callback, verifies state, and issues session token."""
+    user = auth_manager.exchange_code_for_session(provider, code, state)
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication failed or state expired")
+
+    token = auth_manager.issue_session_token(user)
+    response = RedirectResponse(url="/", status_code=303)
+    response.set_cookie(
+        key="session_token",
+        value=token,
+        httponly=True,
+        samesite="lax",
+        max_age=86400 * 14,
+        path="/"
+    )
+    return response
+
+
+@app.get("/api/auth/mock-login")
+async def oauth_mock_login(provider: str = "discord", state: str = ""):
+    """Instant simulated social login for testing when cloud secrets are not yet registered."""
+    user = auth_manager.exchange_code_for_session(provider, f"mock_{provider}", state)
+    if not user:
+        user = auth_manager._generate_mock_user(provider)
+
+    token = auth_manager.issue_session_token(user)
+    response = RedirectResponse(url="/", status_code=303)
+    response.set_cookie(
+        key="session_token",
+        value=token,
+        httponly=True,
+        samesite="lax",
+        max_age=86400 * 14,
+        path="/"
+    )
+    return response
+
+
+@app.get("/api/auth/me")
+async def get_current_user_profile(
+    request: Request,
+    session_token: Optional[str] = Cookie(None)
+):
+    """Returns currently authenticated user profile from cookie or Bearer token."""
+    token = session_token
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:].strip()
+
+    user = auth_manager.verify_session_token(token) if token else None
+
+    if not user and config.data.get("auth", {}).get("allow_guest", True):
+        user = auth_manager.create_guest_session()
+
+    if user:
+        return {
+            "authenticated": True,
+            "user": user.to_dict()
+        }
+    return {
+        "authenticated": False,
+        "user": None
+    }
+
+
+@app.post("/api/auth/logout")
+async def logout_user():
+    """Logs out current user and clears session token cookie."""
+    response = JSONResponse(content={"status": "ok", "authenticated": False})
+    response.delete_cookie(key="session_token", path="/")
+    return response
 
 
 @app.websocket("/ws")

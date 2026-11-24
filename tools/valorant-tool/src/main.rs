@@ -31,15 +31,55 @@ fn get_configured_host() -> String {
     "127.0.0.1".to_string()
 }
 
+fn get_configured_token() -> Option<String> {
+    let path = get_config_path();
+    if path.exists() {
+        if let Ok(content) = fs::read_to_string(&path) {
+            if let Ok(val) = serde_json::from_str::<Value>(&content) {
+                if let Some(tok) = val.get("token").and_then(|t| t.as_str()) {
+                    if !tok.trim().is_empty() {
+                        return Some(tok.trim().to_string());
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+fn save_configured_token(token: &str) -> io::Result<()> {
+    let path = get_config_path();
+    let mut data = if path.exists() {
+        fs::read_to_string(&path)
+            .ok()
+            .and_then(|c| serde_json::from_str::<Value>(&c).ok())
+            .unwrap_or_else(|| json!({}))
+    } else {
+        json!({})
+    };
+    if let Some(obj) = data.as_object_mut() {
+        obj.insert("token".to_string(), json!(token.trim()));
+    }
+    fs::write(&path, serde_json::to_string_pretty(&data)?)
+}
+
 fn save_configured_host(host: &str) -> io::Result<()> {
     let path = get_config_path();
     if let Some(parent) = path.parent() {
         let _ = fs::create_dir_all(parent);
     }
-    let data = json!({
-        "host": host.trim(),
-        "port": DEFAULT_PORT
-    });
+    let mut data = if path.exists() {
+        fs::read_to_string(&path)
+            .ok()
+            .and_then(|c| serde_json::from_str::<Value>(&c).ok())
+            .unwrap_or_else(|| json!({}))
+    } else {
+        json!({})
+    };
+    if let Some(obj) = data.as_object_mut() {
+        obj.insert("host".to_string(), json!(host.trim()));
+        obj.insert("port".to_string(), json!(DEFAULT_PORT));
+    }
     fs::write(&path, serde_json::to_string_pretty(&data)?)
 }
 
@@ -65,7 +105,12 @@ fn http_get(url: &str) -> Result<Value, String> {
         .build()
         .new_agent();
 
-    let mut response = agent.get(url)
+    let mut req = agent.get(url);
+    if let Some(token) = get_configured_token() {
+        req = req.header("Authorization", &format!("Bearer {}", token));
+    }
+
+    let mut response = req
         .call()
         .map_err(|e| format!("HTTP GET error ({}): {}", url, e))?;
 
@@ -85,8 +130,12 @@ fn http_post(url: &str, payload: &Value) -> Result<Value, String> {
     let body_bytes = serde_json::to_vec(payload)
         .map_err(|e| format!("JSON serialize error: {}", e))?;
 
-    let mut response = agent.post(url)
-        .header("Content-Type", "application/json")
+    let mut req = agent.post(url).header("Content-Type", "application/json");
+    if let Some(token) = get_configured_token() {
+        req = req.header("Authorization", &format!("Bearer {}", token));
+    }
+
+    let mut response = req
         .send(&body_bytes)
         .map_err(|e| format!("HTTP POST error ({}): {}", url, e))?;
 
@@ -486,6 +535,86 @@ fn cmd_minecraft(host: &str, subcmd: &str, extra: &[String]) {
     }
 }
 
+fn cmd_auth(host: &str, subcmd: &str, token_arg: Option<&str>) {
+    let base = resolve_base_url(host);
+    match subcmd {
+        "status" | "me" => {
+            let url = format!("{}/api/auth/me", base);
+            println!("Đang kiểm tra tài khoản đăng nhập từ {}...", url);
+            match http_get(&url) {
+                Ok(res) => {
+                    let auth = res.get("authenticated").and_then(|v| v.as_bool()).unwrap_or(false);
+                    if auth {
+                        let user = res.get("user").cloned().unwrap_or(json!({}));
+                        let name = user.get("display_name").or_else(|| user.get("username")).and_then(|v| v.as_str()).unwrap_or("Commander");
+                        let prv = user.get("provider").and_then(|v| v.as_str()).unwrap_or("guest");
+                        let role = user.get("role").and_then(|v| v.as_str()).unwrap_or("admin");
+                        println!("👤 TÀI KHOẢN: {} [{}] (Quyền: {})", name, prv.to_uppercase(), role);
+                    } else {
+                        println!("⚪ Chưa đăng nhập (Đang dùng chế độ Khách Guest / Cục bộ).");
+                    }
+                }
+                Err(e) => eprintln!("❌ {}", e),
+            }
+        }
+        "token" => {
+            if let Some(tok) = token_arg {
+                if let Err(e) = save_configured_token(tok) {
+                    eprintln!("❌ Lỗi lưu token: {}", e);
+                } else {
+                    println!("✅ Đã lưu token chứng thực bảo mật thành công!");
+                }
+            } else if let Some(tok) = get_configured_token() {
+                println!("🔑 Token hiện tại: {}...", &tok[..tok.len().min(12)]);
+            } else {
+                println!("⚪ Chưa có token nào được lưu.");
+            }
+        }
+        "providers" => {
+            let url = format!("{}/api/auth/providers", base);
+            match http_get(&url) {
+                Ok(res) => {
+                    println!("🌐 CỔNG ĐĂNG NHẬP OAUTH2:");
+                    if let Some(prvs) = res.get("providers").and_then(|v| v.as_object()) {
+                        for (k, v) in prvs {
+                            let has = v.get("has_credentials").and_then(|h| h.as_bool()).unwrap_or(false);
+                            let status = if has { "✅ Đã cấu hình Cloud Secret" } else { "💡 Sẵn sàng Dev/Mock Login" };
+                            println!("  - {:<10}: {}", k.to_uppercase(), status);
+                        }
+                    }
+                }
+                Err(e) => eprintln!("❌ {}", e),
+            }
+        }
+        _ => {
+            eprintln!("Lệnh auth không hợp lệ: '{}'. Dùng: status, token [val], providers", subcmd);
+        }
+    }
+}
+
+fn cmd_security(host: &str) {
+    let base = resolve_base_url(host);
+    let url = format!("{}/api/security/status", base);
+    println!("🛡️ Đang kiểm tra trạng thái bảo vệ chống crack & anti-tamper tại {}...", url);
+    match http_get(&url) {
+        Ok(res) => {
+            let is_sec = res.get("is_secure").and_then(|v| v.as_bool()).unwrap_or(true);
+            let dbg = res.get("debugger_detected").and_then(|v| v.as_bool()).unwrap_or(false);
+            let timing = res.get("timing_integrity").and_then(|v| v.as_bool()).unwrap_or(true);
+            let frozen = res.get("is_packaged_bundle").and_then(|v| v.as_bool()).unwrap_or(false);
+
+            println!("============================================================");
+            println!("  ANTI-TAMPER & REVERSE ENGINEERING AUDIT");
+            println!("============================================================");
+            println!("  - Tổng quan bảo mật      : {}", if is_sec { "🟢 AN TOÀN (SECURE)" } else { "🔴 NGUY HIỂM / TAMPERED" });
+            println!("  - Trình gỡ lỗi (Debugger): {}", if dbg { "🚨 PHÁT HIỆN DEBUGGER ĐANG KẾT NỐI!" } else { "🛡️ KHÔNG PHÁT HIỆN DEBUGGER" });
+            println!("  - Tính toàn vẹn thời gian: {}", if timing { "✅ CHUẨN XÁC" } else { "⚠️ BỊ TRÌ HOÃN (BREAKPOINT DETECTED)" });
+            println!("  - Định dạng gói nạp      : {}", if frozen { "📦 ĐÓNG GÓI BINARY BẢO VỆ" } else { "🐍 MÃ NGUỒN RUNTIME" });
+        }
+        Err(e) => eprintln!("❌ {}", e),
+    }
+}
+
 // ----------------- MCP Server Mode (JSON-RPC 2.0) -----------------
 
 fn run_mcp_server() {
@@ -717,6 +846,26 @@ fn run_mcp_server() {
                                     },
                                     "required": ["prompt"]
                                 }
+                            },
+                            {
+                                "name": "get_auth_user",
+                                "description": "Lấy thông tin tài khoản đang đăng nhập (Discord, GitHub, Google, Guest) trên PC.",
+                                "inputSchema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "host": { "type": "string" }
+                                    }
+                                }
+                            },
+                            {
+                                "name": "get_security_status",
+                                "description": "Kiểm tra mức độ an toàn chống dịch ngược và chống crack (Anti-Debugger, Timing Integrity, Anti-Tamper) trên PC.",
+                                "inputSchema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "host": { "type": "string" }
+                                    }
+                                }
                             }
                         ]
                     }
@@ -898,6 +1047,20 @@ fn run_mcp_server() {
                             Err(e) => format!("❌ {}", e),
                         }
                     }
+                    "get_auth_user" => {
+                        let url = format!("{}/api/auth/me", base);
+                        match http_get(&url) {
+                            Ok(d) => format!("👤 THÔNG TIN USER:\n{}", serde_json::to_string_pretty(&d).unwrap_or_default()),
+                            Err(e) => format!("❌ {}", e),
+                        }
+                    }
+                    "get_security_status" => {
+                        let url = format!("{}/api/security/status", base);
+                        match http_get(&url) {
+                            Ok(d) => format!("🛡️ BẢO MẬT & ANTI-TAMPER:\n{}", serde_json::to_string_pretty(&d).unwrap_or_default()),
+                            Err(e) => format!("❌ {}", e),
+                        }
+                    }
                     _ => format!("Lỗi: Không tìm thấy tool '{}'", name),
                 };
 
@@ -939,12 +1102,14 @@ fn run_mcp_server() {
 // ----------------- Main Entry Point -----------------
 
 fn print_usage() {
-    println!("🎮 VALORANT VOICE AI - RUST CLI CONTROLLER v2.0");
+    println!("🎮 VALORANT VOICE AI - RUST CLI CONTROLLER v2.2");
     println!("------------------------------------------------------------");
     println!("Cách dùng:");
     println!("  valorant-tool status            Xem trạng thái kết nối và âm lượng");
     println!("  valorant-tool game [profile]    Xem hoặc đổi hồ sơ Game (desktop/valorant/minecraft/roblox)");
     println!("  valorant-tool mc <cmd> [args]   Minecraft Copilot & Neuro-sama (status/action/chat/neuro/beacon)");
+    println!("  valorant-tool auth [cmd]        Quản lý tài khoản (status/token [val]/providers)");
+    println!("  valorant-tool sec               Kiểm tra bảo mật & chống crack (Anti-Tamper & Anti-Debug)");
     println!("  valorant-tool provider [name]   Xem hoặc đổi AI Backend (antigravity_cli/claude_code/codex/gemini_live)");
     println!("  valorant-tool pet [mode]        Đổi chế độ Desktop Pet (tamagotchi/notification/card)");
     println!("  valorant-tool chat <prompt>     Hỏi đáp chiến thuật nhanh (<15ms)");
@@ -987,6 +1152,12 @@ fn main() {
             let extra = if args.len() > 3 { args[3..].to_vec() } else { vec![] };
             cmd_minecraft(host, subcmd, &extra);
         }
+        "auth" | "login" | "user" => {
+            let subcmd = args.get(2).map(|s| s.as_str()).unwrap_or("status");
+            let tok = args.get(3).map(|s| s.as_str());
+            cmd_auth(host, subcmd, tok);
+        }
+        "sec" | "security" | "integrity" => cmd_security(host),
         "provider" | "backend" => {
             let prov = args.get(2).map(|s| s.as_str());
             cmd_provider(host, prov);
