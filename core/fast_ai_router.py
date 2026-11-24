@@ -38,6 +38,22 @@ class FastTacticalCache:
                 "Retake cần tập hợp đủ người, dùng kỹ năng smoke che tầm nhìn súng bắn tỉa và flash đẩy đồng thời."
             ),
             (
+                r"\b(creeper|no|nổ|no banh)\b",
+                "Cảnh báo Creeper! Lùi lại ngay lập tức hoặc giơ khiên đỡ sát thương nổ!"
+            ),
+            (
+                r"\b(kim cuong|diamond|kim cương|netherite)\b",
+                "Đã phát hiện quặng quý! Cắm đuốc quanh khu vực và kiểm tra xem có hồ nham thạch bên dưới không trước khi đào."
+            ),
+            (
+                r"\b(neuro|neuro-sama|choi minecraft|chơi minecraft)\b",
+                "Heart heart heart! Neuro-sama đây! Mình đang co-pilot Minecraft cùng bạn, sẵn sàng đào quặng và diệt quái!"
+            ),
+            (
+                r"\b(roblox|obby|parkour)\b",
+                "Khi nhảy Obby Roblox, hãy chuyển góc nhìn thứ nhất (First Person) hoặc khóa Shift-Lock để căn góc chuẩn nhất!"
+            ),
+            (
                 r"\b(drop|cho sung|cho súng|vandal|phantom)\b",
                 "Đang phát tín hiệu yêu cầu đồng đội hỗ trợ drop súng cho bạn."
             ),
@@ -138,14 +154,35 @@ class UnifiedAIRouter:
         self._simulate_lipsync_for_text(response_text)
         return response_text
 
+    def _get_active_system_prompt(self, fallback: str = "") -> str:
+        try:
+            from core.game_profiles import game_profile_manager
+            return game_profile_manager.get_active_profile().system_prompt
+        except Exception:
+            return fallback or (
+                "You are Sakura AI, an elite gaming companion and tactical assistant. "
+                "Be ultra-concise, sharp, and helpful (max 1-2 sentences in Vietnamese)."
+            )
+
+    def generate_tactical_advice(
+        self,
+        screen_analysis: str = "",
+        game_state: Optional[Dict[str, Any]] = None,
+        user_question: str = ""
+    ) -> str:
+        """Unified method for generating tactical advice / commentary across all game modes."""
+        prompt_parts = []
+        if screen_analysis:
+            prompt_parts.append(f"State info: {screen_analysis}")
+        if user_question:
+            prompt_parts.append(f"Question: {user_question}")
+        full_prompt = "\n".join(prompt_parts) if prompt_parts else "Hãy đưa ra chỉ dẫn hữu ích lúc này."
+        return self.query_fast(full_prompt)
+
     def _call_antigravity_gateway(self, prompt: str, system_context: str = "") -> str:
         """Calls Antigravity CLI / OmniRoute Gateway at 127.0.0.1:20128."""
         endpoint = f"{self._gateway_url}/chat/completions"
-        system_prompt = system_context or (
-            "You are Sakura AI, an elite Valorant voice tactical assistant. "
-            "Be ultra-concise, sharp, and helpful (max 1-2 sentences). "
-            "Focus on winning round and clear callouts in Vietnamese."
-        )
+        system_prompt = system_context or self._get_active_system_prompt()
 
         payload = {
             "model": self._model,

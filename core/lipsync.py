@@ -106,6 +106,35 @@ class LipSyncAnalyzer:
             self.current_emotion = emotion
         self._notify(self.get_current_state())
 
+    def synthesize_mock_viseme_stream(self, text: str) -> None:
+        """Simulates speech mouth-shapes (visemes) corresponding to text syllables."""
+        def worker():
+            words = text.split()
+            duration_per_word = 0.20
+            vowels = ["A", "I", "U", "E", "O"]
+
+            self.set_emotion("speaking")
+            for w in words:
+                vowel = random.choice(vowels)
+                with self._lock:
+                    self.mouth_open = random.uniform(0.45, 0.95)
+                    self.current_viseme = vowel
+                self._notify(self.get_current_state())
+                time.sleep(duration_per_word * 0.6)
+
+                with self._lock:
+                    self.mouth_open = random.uniform(0.1, 0.25)
+                self._notify(self.get_current_state())
+                time.sleep(duration_per_word * 0.4)
+
+            with self._lock:
+                self.mouth_open = 0.0
+                self.current_viseme = "closed"
+            self.set_emotion("neutral")
+            self._notify(self.get_current_state())
+
+        threading.Thread(target=worker, daemon=True, name="LipSyncSynthesizer").start()
+
     def get_current_state(self) -> Dict:
         """Returns snapshot of current viseme parameters."""
         with self._lock:

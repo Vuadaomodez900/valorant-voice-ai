@@ -365,6 +365,127 @@ fn cmd_scan(target: Option<&str>) {
     }
 }
 
+fn cmd_game(host: &str, profile: Option<&str>) {
+    let base = resolve_base_url(host);
+    if let Some(p) = profile {
+        let url = format!("{}/api/game/profile", base);
+        println!("Đang đổi hồ sơ Game sang: {}...", p);
+        match http_post(&url, &json!({ "profile_id": p })) {
+            Ok(res) => {
+                let name = res.get("active_profile").and_then(|ap| ap.get("name")).and_then(|n| n.as_str()).unwrap_or(p);
+                println!("✅ Đã chuyển đổi Hồ sơ Game sang: '{}' thành công!", name);
+            }
+            Err(e) => eprintln!("❌ {}", e),
+        }
+    } else {
+        let url = format!("{}/api/game/profiles", base);
+        match http_get(&url) {
+            Ok(d) => {
+                let active = d.get("active_profile").cloned().unwrap_or(json!({}));
+                let act_name = active.get("name").and_then(|v| v.as_str()).unwrap_or("Desktop");
+                let act_icon = active.get("icon").and_then(|v| v.as_str()).unwrap_or("🌸");
+                println!("🎮 HỒ SƠ GAME ĐANG HOẠT ĐỘNG: {} {}", act_icon, act_name);
+                println!("------------------------------------------------------------");
+                if let Some(list) = d.get("profiles").and_then(|v| v.as_array()) {
+                    for prof in list {
+                        let id = prof.get("id").and_then(|v| v.as_str()).unwrap_or("");
+                        let name = prof.get("name").and_then(|v| v.as_str()).unwrap_or("");
+                        let icon = prof.get("icon").and_then(|v| v.as_str()).unwrap_or("");
+                        let is_act = prof.get("is_active").and_then(|v| v.as_bool()).unwrap_or(false);
+                        let mark = if is_act { "👉 [ĐANG CHỌN]" } else { "  " };
+                        println!("{} {} {:<12} - {}", mark, icon, id, name);
+                    }
+                }
+            }
+            Err(e) => eprintln!("❌ {}", e),
+        }
+    }
+}
+
+fn cmd_minecraft(host: &str, subcmd: &str, extra: &[String]) {
+    let base = resolve_base_url(host);
+    match subcmd {
+        "status" | "state" => {
+            let url = format!("{}/api/minecraft/state", base);
+            println!("Đang đọc dữ liệu Minecraft Copilot từ {}...", url);
+            match http_get(&url) {
+                Ok(res) => {
+                    let connected = res.get("connected").and_then(|v| v.as_bool()).unwrap_or(false);
+                    let in_game = res.get("in_game").and_then(|v| v.as_bool()).unwrap_or(false);
+                    let state = res.get("state").cloned().unwrap_or(json!({}));
+                    let player = state.get("player").cloned().unwrap_or(json!({}));
+                    let danger = state.get("danger").cloned().unwrap_or(json!({}));
+                    let radar = state.get("radar").cloned().unwrap_or(json!({}));
+
+                    println!("============================================================");
+                    println!("  MINECRAFT COPILOT • NEURO-SAMA RUNTIME");
+                    println!("============================================================");
+                    println!("  - Trạng thái kết nối Mod : {}", if connected { "🟢 CONNECTED (Port 28888)" } else { "🔴 OFFLINE" });
+                    println!("  - Trạng thái trong game  : {}", if in_game { "🎮 IN-GAME" } else { "⏸️ MENU / WAITING" });
+                    if in_game {
+                        let name = player.get("name").and_then(|v| v.as_str()).unwrap_or("Player");
+                        let hp = player.get("health").and_then(|v| v.as_f64()).unwrap_or(20.0);
+                        let food = player.get("food_level").and_then(|v| v.as_i64()).unwrap_or(20);
+                        let x = player.get("x").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                        let y = player.get("y").and_then(|v| v.as_f64()).unwrap_or(64.0);
+                        let z = player.get("z").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                        let danger_lvl = danger.get("level").and_then(|v| v.as_str()).unwrap_or("SAFE");
+                        let hostiles = radar.get("hostile_count").and_then(|v| v.as_i64()).unwrap_or(0);
+
+                        println!("  - Nhân vật               : {}", name);
+                        println!("  - Sinh lực (HP)          : {:.1}/20 | Đói: {}/20", hp, food);
+                        println!("  - Tọa độ (XYZ)           : X={:.1}, Y={:.1}, Z={:.1}", x, y, z);
+                        println!("  - Mức độ nguy cơ         : {}", danger_lvl);
+                        println!("  - Quái vật quanh 32m     : {}", hostiles);
+                    }
+                }
+                Err(e) => eprintln!("❌ {}", e),
+            }
+        }
+        "action" => {
+            let act = extra.first().map(|s| s.as_str()).unwrap_or("jump");
+            let url = format!("{}/api/minecraft/action", base);
+            println!("⚡ Gửi hành động '{}' vào Minecraft...", act);
+            match http_post(&url, &json!({ "action": act })) {
+                Ok(_) => println!("✅ Đã gửi thao tác '{}' thành công!", act),
+                Err(e) => eprintln!("❌ {}", e),
+            }
+        }
+        "chat" => {
+            let msg = if extra.is_empty() { "Hello from AGY!".to_string() } else { extra.join(" ") };
+            let url = format!("{}/api/minecraft/action", base);
+            println!("💬 Gửi chat vào Minecraft: \"{}\"...", msg);
+            match http_post(&url, &json!({ "action": "send_chat", "params": { "text": msg } })) {
+                Ok(_) => println!("✅ Đã phát chat vào game!"),
+                Err(e) => eprintln!("❌ {}", e),
+            }
+        }
+        "neuro" => {
+            let prompt = if extra.is_empty() { "Neuro ơi tình hình thế nào?".to_string() } else { extra.join(" ") };
+            let url = format!("{}/api/minecraft/neuro_chat", base);
+            println!("💬 Hỏi Neuro-sama trong Minecraft: \"{}\"...", prompt);
+            match http_post(&url, &json!({ "prompt": prompt })) {
+                Ok(res) => {
+                    let reply = res.get("reply").and_then(|v| v.as_str()).unwrap_or("");
+                    println!("⛏️ NEURO-SAMA: {}", reply);
+                }
+                Err(e) => eprintln!("❌ {}", e),
+            }
+        }
+        "beacon" => {
+            let url = format!("{}/api/minecraft/particle", base);
+            println!("✨ Bật hiệu ứng cột sáng Ore Beacon & Hào quang Soul Flame...");
+            match http_post(&url, &json!({ "beacon": true, "trail": true, "aura": "soul_flame" })) {
+                Ok(_) => println!("✅ Đã kích hoạt Ore Beacon & Hào quang!"),
+                Err(e) => eprintln!("❌ {}", e),
+            }
+        }
+        _ => {
+            eprintln!("Lệnh mc không hợp lệ: '{}'. Dùng: status, action, chat, neuro, beacon", subcmd);
+        }
+    }
+}
+
 // ----------------- MCP Server Mode (JSON-RPC 2.0) -----------------
 
 fn run_mcp_server() {
@@ -539,6 +660,63 @@ fn run_mcp_server() {
                                     },
                                     "required": ["prompt"]
                                 }
+                            },
+                            {
+                                "name": "get_game_profile",
+                                "description": "Lấy thông tin hồ sơ Game hiện tại (Valorant, Minecraft Neuro-sama, Roblox, Desktop Pet).",
+                                "inputSchema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "host": { "type": "string" }
+                                    }
+                                }
+                            },
+                            {
+                                "name": "set_game_profile",
+                                "description": "Chuyển đổi hồ sơ Game đang chơi: valorant, minecraft, roblox, hoặc desktop.",
+                                "inputSchema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "profile_id": { "type": "string", "enum": ["valorant", "minecraft", "roblox", "desktop"] },
+                                        "host": { "type": "string" }
+                                    },
+                                    "required": ["profile_id"]
+                                }
+                            },
+                            {
+                                "name": "get_minecraft_state",
+                                "description": "Đọc dữ liệu Minecraft theo thời gian thực (Tọa độ XYZ, Máu HP, Độ đói, Mức độ nguy cơ, Quái vật xung quanh, Khối đang nhìn).",
+                                "inputSchema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "host": { "type": "string" }
+                                    }
+                                }
+                            },
+                            {
+                                "name": "send_minecraft_action",
+                                "description": "Thực thi hành động can thiệp trực tiếp vào Minecraft (jump, eat, attack, use_shield, autopilot, send_chat).",
+                                "inputSchema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "action": { "type": "string", "description": "Tên hành động (jump, eat, attack, use_shield, autopilot, send_chat)" },
+                                        "params": { "type": "object", "description": "Tham số bổ sung (ví dụ: duration, text, enable)" },
+                                        "host": { "type": "string" }
+                                    },
+                                    "required": ["action"]
+                                }
+                            },
+                            {
+                                "name": "chat_with_neuro",
+                                "description": "Trò chuyện trực tiếp với AI Neuro-sama trong Minecraft với nhận thức sâu sắc về thế giới in-game.",
+                                "inputSchema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "prompt": { "type": "string", "description": "Lời nhắn hoặc câu hỏi cho Neuro-sama" },
+                                        "host": { "type": "string" }
+                                    },
+                                    "required": ["prompt"]
+                                }
                             }
                         ]
                     }
@@ -670,6 +848,56 @@ fn run_mcp_server() {
                             format!("ℹ️ Địa chỉ hiện tại: {}", base)
                         }
                     }
+                    "get_game_profile" => {
+                        let url = format!("{}/api/game/profiles", base);
+                        match http_get(&url) {
+                            Ok(d) => {
+                                let active = d.get("active_profile").cloned().unwrap_or(json!({}));
+                                let name = active.get("name").and_then(|v| v.as_str()).unwrap_or("Desktop");
+                                let icon = active.get("icon").and_then(|v| v.as_str()).unwrap_or("🌸");
+                                format!("🎮 Hồ sơ Game hiện tại: {} {}", icon, name)
+                            }
+                            Err(e) => format!("❌ {}", e),
+                        }
+                    }
+                    "set_game_profile" => {
+                        let pid = args.get("profile_id").and_then(|v| v.as_str()).unwrap_or("desktop");
+                        let url = format!("{}/api/game/profile", base);
+                        match http_post(&url, &json!({ "profile_id": pid })) {
+                            Ok(res) => {
+                                let name = res.get("active_profile").and_then(|ap| ap.get("name")).and_then(|n| n.as_str()).unwrap_or(pid);
+                                format!("✅ Đã chuyển đổi Hồ sơ Game sang: {}", name)
+                            }
+                            Err(e) => format!("❌ {}", e),
+                        }
+                    }
+                    "get_minecraft_state" => {
+                        let url = format!("{}/api/minecraft/state", base);
+                        match http_get(&url) {
+                            Ok(d) => format!("⛏️ MINECRAFT STATE:\n{}", serde_json::to_string_pretty(&d).unwrap_or_default()),
+                            Err(e) => format!("❌ {}", e),
+                        }
+                    }
+                    "send_minecraft_action" => {
+                        let action = args.get("action").and_then(|v| v.as_str()).unwrap_or("jump");
+                        let params = args.get("params").cloned().unwrap_or(json!({}));
+                        let url = format!("{}/api/minecraft/action", base);
+                        match http_post(&url, &json!({ "action": action, "params": params })) {
+                            Ok(_) => format!("✅ Đã thực thi thao tác Minecraft: '{}'", action),
+                            Err(e) => format!("❌ {}", e),
+                        }
+                    }
+                    "chat_with_neuro" => {
+                        let prompt = args.get("prompt").and_then(|v| v.as_str()).unwrap_or("");
+                        let url = format!("{}/api/minecraft/neuro_chat", base);
+                        match http_post(&url, &json!({ "prompt": prompt })) {
+                            Ok(res) => {
+                                let reply = res.get("reply").and_then(|v| v.as_str()).unwrap_or("");
+                                format!("⛏️ NEURO-SAMA: {}", reply)
+                            }
+                            Err(e) => format!("❌ {}", e),
+                        }
+                    }
                     _ => format!("Lỗi: Không tìm thấy tool '{}'", name),
                 };
 
@@ -715,6 +943,8 @@ fn print_usage() {
     println!("------------------------------------------------------------");
     println!("Cách dùng:");
     println!("  valorant-tool status            Xem trạng thái kết nối và âm lượng");
+    println!("  valorant-tool game [profile]    Xem hoặc đổi hồ sơ Game (desktop/valorant/minecraft/roblox)");
+    println!("  valorant-tool mc <cmd> [args]   Minecraft Copilot & Neuro-sama (status/action/chat/neuro/beacon)");
     println!("  valorant-tool provider [name]   Xem hoặc đổi AI Backend (antigravity_cli/claude_code/codex/gemini_live)");
     println!("  valorant-tool pet [mode]        Đổi chế độ Desktop Pet (tamagotchi/notification/card)");
     println!("  valorant-tool chat <prompt>     Hỏi đáp chiến thuật nhanh (<15ms)");
@@ -748,6 +978,15 @@ fn main() {
 
     match cmd.as_str() {
         "status" => cmd_status(host),
+        "game" | "profile" => {
+            let prof = args.get(2).map(|s| s.as_str());
+            cmd_game(host, prof);
+        }
+        "mc" | "minecraft" => {
+            let subcmd = args.get(2).map(|s| s.as_str()).unwrap_or("status");
+            let extra = if args.len() > 3 { args[3..].to_vec() } else { vec![] };
+            cmd_minecraft(host, subcmd, &extra);
+        }
         "provider" | "backend" => {
             let prov = args.get(2).map(|s| s.as_str());
             cmd_provider(host, prov);

@@ -384,5 +384,84 @@ class TestLipSyncAndFastAI(unittest.TestCase):
         self.assertEqual(ai_router.current_provider, "claude_code")
 
 
+class TestMultiGameAndMinecraft(unittest.TestCase):
+    """Verifies GameProfileManager, MinecraftAgent (Neuro-sama), and Multi-Game detection."""
+
+    def test_game_profile_manager(self):
+        from core.game_profiles import GameProfileManager, game_profile_manager
+        mgr = GameProfileManager()
+        profiles = mgr.list_profiles()
+        p_ids = [p["id"] for p in profiles]
+        self.assertIn("desktop", p_ids)
+        self.assertIn("valorant", p_ids)
+        self.assertIn("minecraft", p_ids)
+        self.assertIn("roblox", p_ids)
+
+        # Switch profile
+        success = mgr.set_active_profile("minecraft")
+        self.assertTrue(success)
+        active = mgr.get_active_profile()
+        self.assertEqual(active.profile_id, "minecraft")
+        self.assertIn("Neuro-sama", active.name)
+        self.assertIn("Neuro-sama", active.system_prompt)
+
+        # Process detection mapping
+        self.assertEqual(mgr.detect_profile_by_process_name("javaw.exe"), "minecraft")
+        self.assertEqual(mgr.detect_profile_by_process_name("VALORANT.exe"), "valorant")
+        self.assertEqual(mgr.detect_profile_by_process_name("RobloxPlayerBeta.exe"), "roblox")
+        self.assertIsNone(mgr.detect_profile_by_process_name("notepad.exe"))
+
+    def test_minecraft_agent_neuro_voice_and_triggers(self):
+        from core.minecraft_agent import MinecraftAgent
+        agent = MinecraftAgent(host="127.0.0.1", port=28888)
+
+        # Check default autonomy
+        self.assertTrue(agent.autonomous_enabled)
+        self.assertTrue(agent.auto_shield_enabled)
+        self.assertTrue(agent.auto_eat_enabled)
+
+        # Reactive voice test
+        commentary_received = []
+        agent.register_commentary_listener(lambda txt, emo: commentary_received.append((txt, emo)))
+
+        voice_line = agent.trigger_neuro_voice("creeper_alert", emotion="panic")
+        self.assertGreater(len(voice_line), 0)
+        self.assertGreater(len(commentary_received), 0)
+        self.assertEqual(commentary_received[-1][1], "panic")
+
+        # Autonomous trigger test: Creeper ambush
+        agent.in_game = True
+        mock_danger_state = {
+            "player": {"health": 18.0, "food_level": 20, "x": 100.0, "y": 64.0, "z": 200.0},
+            "danger": {"level": "CRITICAL", "reasons": ["Creeper within 4.5m"]},
+            "radar": {"hostile_count": 1, "hostiles": [{"name": "Creeper", "distance": 4.2}]},
+            "environment": {"dimension": "minecraft:overworld", "biome": "plains"},
+            "target": {"type": "NONE"}
+        }
+        agent._evaluate_autonomous_triggers(mock_danger_state)
+        self.assertIn("creeper", agent._last_reaction_time)
+
+        # Autonomous trigger test: Low Health
+        mock_low_hp_state = {
+            "player": {"health": 4.0, "food_level": 10, "x": 100.0, "y": 64.0, "z": 200.0},
+            "danger": {"level": "CRITICAL", "reasons": ["Low HP"]},
+            "radar": {"hostile_count": 0, "hostiles": []},
+            "environment": {"dimension": "minecraft:overworld", "biome": "plains"},
+            "target": {"type": "NONE"}
+        }
+        agent._evaluate_autonomous_triggers(mock_low_hp_state)
+        self.assertIn("low_hp", agent._last_reaction_time)
+        self.assertIn("eat", agent._last_reaction_time)
+
+    def test_process_watcher_multigame_support(self):
+        from core.process_watcher import ProcessWatcher
+        watcher = ProcessWatcher()
+        self.assertEqual(watcher.current_active_profile, "desktop")
+        # Ensure watcher has profile change callbacks list
+        profile_events = []
+        watcher.register_profile_callback(lambda p: profile_events.append(p))
+        self.assertEqual(len(watcher.on_profile_change_callbacks), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

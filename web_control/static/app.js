@@ -72,6 +72,14 @@ function initWebSocket() {
         updateAvatarLipsync(data.data);
       } else if (data.type === "ai_reply") {
         if (avatarSpeechText) avatarSpeechText.textContent = `"${data.response}"`;
+      } else if (data.type === "neuro_commentary") {
+        if (avatarSpeechText) avatarSpeechText.textContent = `"${data.text}"`;
+        appendSubtitleFeed("[Minecraft Neuro]", data.text);
+      } else if (data.type === "neuro_chat_reply") {
+        if (avatarSpeechText) avatarSpeechText.textContent = `"${data.reply}"`;
+        appendSubtitleFeed("[Neuro-sama]", data.reply);
+      } else if (data.type === "profile_changed") {
+        updateActiveProfilePill(data.id);
       } else if (data.type === "system_healed" || data.type === "config_updated") {
         fetchStatus();
         fetchDiagnostics();
@@ -512,6 +520,265 @@ if (aiProviderSelect) {
     } catch (err) {}
   });
 }
+
+// ========================================================
+// GAME PROFILE & MINECRAFT NEURO-SAMA COPILOT LOGIC
+// ========================================================
+
+const mcPane = document.getElementById("minecraft-copilot-pane");
+let mcPollInterval = null;
+
+function updateActiveProfilePill(profileId) {
+  const pills = document.querySelectorAll(".profile-pill");
+  pills.forEach(p => {
+    if (p.getAttribute("data-profile") === profileId) {
+      p.classList.add("active");
+    } else {
+      p.classList.remove("active");
+    }
+  });
+
+  if (profileId === "minecraft") {
+    if (mcPane) mcPane.style.display = "block";
+    startMinecraftPolling();
+  } else {
+    if (mcPane) mcPane.style.display = "none";
+    stopMinecraftPolling();
+  }
+}
+
+async function switchGameProfile(profileId) {
+  try {
+    const res = await fetch("/api/game/profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profile_id: profileId })
+    });
+    const data = await res.json();
+    if (data.status === "ok") {
+      updateActiveProfilePill(profileId);
+    }
+  } catch (e) {
+    console.error("Failed to switch game profile:", e);
+  }
+}
+
+// Setup Game Profile Click Listeners
+document.querySelectorAll(".profile-pill").forEach(pill => {
+  pill.addEventListener("click", () => {
+    const pid = pill.getAttribute("data-profile");
+    switchGameProfile(pid);
+  });
+});
+
+// Setup Minecraft Actions
+async function sendMcAction(action, params = {}) {
+  try {
+    const res = await fetch("/api/minecraft/action", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, params })
+    });
+    return await res.json();
+  } catch (e) {
+    console.error("MC action failed:", e);
+  }
+}
+
+const btnMcAutopilot = document.getElementById("btn-mc-autopilot");
+let mcAutopilotState = false;
+if (btnMcAutopilot) {
+  btnMcAutopilot.addEventListener("click", async () => {
+    mcAutopilotState = !mcAutopilotState;
+    await sendMcAction("autopilot", { enable: mcAutopilotState });
+    btnMcAutopilot.textContent = mcAutopilotState ? "⏹️ Dừng AutoPilot" : "🏃 AutoPilot Roam";
+  });
+}
+
+const btnMcJump = document.getElementById("btn-mc-jump");
+if (btnMcJump) btnMcJump.addEventListener("click", () => sendMcAction("jump"));
+
+const btnMcEat = document.getElementById("btn-mc-eat");
+if (btnMcEat) btnMcEat.addEventListener("click", () => sendMcAction("eat"));
+
+const btnMcShield = document.getElementById("btn-mc-shield");
+if (btnMcShield) btnMcShield.addEventListener("click", () => sendMcAction("use_shield", { duration: 2.0 }));
+
+const btnMcMine = document.getElementById("btn-mc-mine");
+if (btnMcMine) btnMcMine.addEventListener("click", () => sendMcAction("attack", { duration: 1.5 }));
+
+const btnMcBeacon = document.getElementById("btn-mc-beacon");
+if (btnMcBeacon) {
+  btnMcBeacon.addEventListener("click", async () => {
+    await fetch("/api/minecraft/particle", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ beacon: true, trail: true, aura: "soul_flame" })
+    });
+    alert("✨ Đã kích hoạt cột sáng chỉ điểm quặng quý (Ore Beacon) & Hào quang!");
+  });
+}
+
+// Minecraft Copilot Toggles
+const checkMcAuto = document.getElementById("mc-check-autonomous");
+const checkMcShield = document.getElementById("mc-check-autoshield");
+const checkMcEat = document.getElementById("mc-check-autoeat");
+const checkMcReactive = document.getElementById("mc-check-reactive");
+
+async function updateMcCopilotSettings() {
+  await fetch("/api/minecraft/copilot", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      autonomous: checkMcAuto ? checkMcAuto.checked : true,
+      auto_shield: checkMcShield ? checkMcShield.checked : true,
+      auto_eat: checkMcEat ? checkMcEat.checked : true,
+      reactive_voice: checkMcReactive ? checkMcReactive.checked : true,
+    })
+  });
+}
+
+[checkMcAuto, checkMcShield, checkMcEat, checkMcReactive].forEach(chk => {
+  if (chk) chk.addEventListener("change", updateMcCopilotSettings);
+});
+
+// Neuro-sama Chat
+const mcNeuroInput = document.getElementById("mc-neuro-input");
+const btnMcSendChat = document.getElementById("btn-mc-send-chat");
+
+async function handleNeuroChat() {
+  if (!mcNeuroInput) return;
+  const prompt = mcNeuroInput.value.trim();
+  if (!prompt) return;
+  mcNeuroInput.value = "";
+  if (avatarSpeechText) avatarSpeechText.textContent = "Neuro-sama đang suy nghĩ...";
+  try {
+    const res = await fetch("/api/minecraft/neuro_chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt })
+    });
+    const data = await res.json();
+    if (avatarSpeechText && data.reply) {
+      avatarSpeechText.textContent = `"${data.reply}"`;
+    }
+  } catch (e) {
+    if (avatarSpeechText) avatarSpeechText.textContent = "Lỗi kết nối Neuro: " + e;
+  }
+}
+
+if (btnMcSendChat) btnMcSendChat.addEventListener("click", handleNeuroChat);
+if (mcNeuroInput) {
+  mcNeuroInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") handleNeuroChat();
+  });
+}
+
+// Telemetry Poller
+async function fetchMinecraftState() {
+  try {
+    const res = await fetch("/api/minecraft/state");
+    const data = await res.json();
+    const st = data.state || {};
+    const player = st.player || {};
+    const danger = st.danger || {};
+    const radar = st.radar || {};
+    const target = st.target || {};
+
+    const pill = document.getElementById("mc-status-pill");
+    if (pill) {
+      if (data.connected && data.in_game) {
+        pill.textContent = `🟢 TRONG GAME (${player.name || 'Player'})`;
+        pill.className = "pane-tag tag-green";
+      } else if (data.connected) {
+        pill.textContent = "🟡 ONLINE (CHỜ VÀO GAME)";
+        pill.className = "pane-tag tag-yellow";
+      } else {
+        pill.textContent = "📡 DÒ MOD (PORT 28888)";
+        pill.className = "pane-tag tag-blue";
+      }
+    }
+
+    const hpEl = document.getElementById("mc-hp-val");
+    if (hpEl) {
+      const hp = player.health !== undefined ? player.health : 20;
+      hpEl.textContent = `${hp} / ${player.max_health || 20}`;
+      hpEl.className = hp <= 6 ? "mc-stat-val text-red" : (hp <= 12 ? "mc-stat-val text-yellow" : "mc-stat-val text-green");
+    }
+
+    const foodEl = document.getElementById("mc-food-val");
+    if (foodEl) foodEl.textContent = `${player.food_level !== undefined ? player.food_level : 20} / 20`;
+
+    const coordsEl = document.getElementById("mc-coords-val");
+    if (coordsEl && player.x !== undefined) {
+      coordsEl.textContent = `X: ${player.x.toFixed(1)} | Y: ${player.y.toFixed(1)} | Z: ${player.z.toFixed(1)}`;
+    }
+
+    const dangerEl = document.getElementById("mc-danger-val");
+    if (dangerEl) {
+      const lvl = danger.level || "SAFE";
+      if (lvl === "CRITICAL") {
+        dangerEl.textContent = "🔴 NGUY CƠ CAO!";
+        dangerEl.className = "mc-stat-val text-red";
+      } else if (lvl === "WARNING") {
+        dangerEl.textContent = "🟡 CẢNH BÁO";
+        dangerEl.className = "mc-stat-val text-yellow";
+      } else {
+        dangerEl.textContent = "🟢 AN TOÀN";
+        dangerEl.className = "mc-stat-val text-green";
+      }
+    }
+
+    const hostCountEl = document.getElementById("mc-hostiles-count");
+    if (hostCountEl) hostCountEl.textContent = radar.hostile_count || 0;
+
+    const targetEl = document.getElementById("mc-target-looking");
+    if (targetEl) {
+      if (target.type === "BLOCK") {
+        targetEl.textContent = `👁️ Khối: ${target.block ? target.block.id : 'None'}`;
+      } else if (target.type === "ENTITY") {
+        targetEl.textContent = `👁️ Thực thể: ${target.entity ? target.entity.name : 'None'}`;
+      } else {
+        targetEl.textContent = "👁️ Không có mục tiêu";
+      }
+    }
+
+    const hostListEl = document.getElementById("mc-hostiles-list");
+    if (hostListEl) {
+      const hostiles = radar.hostiles || [];
+      if (hostiles.length === 0) {
+        hostListEl.innerHTML = '<span class="radar-tag">Không có quái vật</span>';
+      } else {
+        hostListEl.innerHTML = hostiles.slice(0, 5).map(h => 
+          `<span class="radar-tag">👾 ${h.name} (${h.distance}m)</span>`
+        ).join("");
+      }
+    }
+  } catch (e) {}
+}
+
+function startMinecraftPolling() {
+  if (mcPollInterval) return;
+  fetchMinecraftState();
+  mcPollInterval = setInterval(fetchMinecraftState, 1500);
+}
+
+function stopMinecraftPolling() {
+  if (mcPollInterval) {
+    clearInterval(mcPollInterval);
+    mcPollInterval = null;
+  }
+}
+
+// Fetch active profile on load
+fetch("/api/game/profiles")
+  .then(r => r.json())
+  .then(data => {
+    if (data.active_profile) {
+      updateActiveProfilePill(data.active_profile.id);
+    }
+  })
+  .catch(() => {});
 
 // Initialize on Load
 document.addEventListener("DOMContentLoaded", () => {

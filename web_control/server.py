@@ -31,6 +31,8 @@ from core.cable_installer import is_vbcable_installed, install_vbcable_integrate
 from core.self_healer import self_healer
 from core.lipsync import lipsync_analyzer
 from core.fast_ai_router import ai_router
+from core.game_profiles import game_profile_manager
+from core.minecraft_agent import minecraft_agent
 
 app = FastAPI(title="Valorant Voice AI - LAN Control", docs_url=None, redoc_url=None)
 
@@ -146,6 +148,34 @@ class TamagotchiModeRequest(BaseModel):
     mode: str  # "tamagotchi", "notification", "card"
 
 
+class GameProfileRequest(BaseModel):
+    profile_id: str
+
+
+class MinecraftActionRequest(BaseModel):
+    action: str
+    params: Dict[str, Any] = Field(default_factory=dict)
+
+
+class MinecraftNeuroChatRequest(BaseModel):
+    prompt: str
+
+
+class MinecraftParticleRequest(BaseModel):
+    aura: Optional[str] = None
+    trail: Optional[bool] = None
+    beacon: Optional[bool] = None
+    density: float = 1.0
+
+
+class MinecraftCopilotRequest(BaseModel):
+    autonomous: Optional[bool] = None
+    auto_shield: Optional[bool] = None
+    auto_eat: Optional[bool] = None
+    auto_escape: Optional[bool] = None
+    reactive_voice: Optional[bool] = None
+
+
 main_event_loop = None
 
 
@@ -165,6 +195,29 @@ async def startup_event():
             )
 
     lipsync_analyzer.register_subscriber(on_viseme)
+
+    def on_neuro_speech(text: str, emotion: str):
+        if main_event_loop and main_event_loop.is_running() and ws_manager.active_connections:
+            asyncio.run_coroutine_threadsafe(
+                ws_manager.broadcast({"type": "neuro_commentary", "text": text, "emotion": emotion}),
+                main_event_loop
+            )
+
+    minecraft_agent.register_commentary_listener(on_neuro_speech)
+
+    def on_profile_switch(profile):
+        if main_event_loop and main_event_loop.is_running() and ws_manager.active_connections:
+            asyncio.run_coroutine_threadsafe(
+                ws_manager.broadcast({
+                    "type": "profile_changed",
+                    "id": profile.profile_id,
+                    "name": profile.name,
+                    "icon": profile.icon
+                }),
+                main_event_loop
+            )
+
+    game_profile_manager.register_profile_change_listener(on_profile_switch)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -394,6 +447,99 @@ async def set_tamagotchi_mode(req: TamagotchiModeRequest):
         "mode": req.mode
     })
     return {"status": "ok", "mode": req.mode}
+
+
+# =============================================================================
+# Multi-Game Profile APIs
+# =============================================================================
+
+@app.get("/api/game/profiles")
+async def get_game_profiles():
+    """Lists all game profiles and returns the currently active one."""
+    return {
+        "active_profile": game_profile_manager.get_active_profile().to_dict(),
+        "profiles": game_profile_manager.list_profiles()
+    }
+
+
+@app.post("/api/game/profile")
+async def set_game_profile(req: GameProfileRequest):
+    """Switches active game profile (valorant, minecraft, roblox, desktop)."""
+    success = game_profile_manager.set_active_profile(req.profile_id)
+    if not success:
+        raise HTTPException(status_code=400, detail=f"Unknown game profile: {req.profile_id}")
+    active = game_profile_manager.get_active_profile()
+    return {"status": "ok", "active_profile": active.to_dict()}
+
+
+# =============================================================================
+# Minecraft (Neuro-sama) Autonomous APIs
+# =============================================================================
+
+@app.get("/api/minecraft/state")
+async def get_minecraft_state():
+    """Fetches live Minecraft world and player telemetry."""
+    state = minecraft_agent.fetch_state()
+    return {
+        "connected": minecraft_agent.is_connected,
+        "in_game": minecraft_agent.in_game,
+        "state": state
+    }
+
+
+@app.post("/api/minecraft/action")
+async def send_minecraft_action(req: MinecraftActionRequest):
+    """Sends action to Minecraft client (move, jump, attack, eat, autopilot, etc.)."""
+    success = minecraft_agent.send_action(req.action, **req.params)
+    return {"status": "ok" if success else "failed", "action": req.action}
+
+
+@app.post("/api/minecraft/neuro_chat")
+async def chat_with_neuro_sama(req: MinecraftNeuroChatRequest):
+    """Chats with Neuro-sama persona with live Minecraft world awareness."""
+    reply = minecraft_agent.chat_with_neuro(req.prompt)
+    await ws_manager.broadcast({
+        "type": "neuro_chat_reply",
+        "prompt": req.prompt,
+        "reply": reply
+    })
+    return {"status": "ok", "reply": reply}
+
+
+@app.post("/api/minecraft/copilot")
+async def configure_minecraft_copilot(req: MinecraftCopilotRequest):
+    """Configures autonomous behaviors for Neuro-sama in Minecraft."""
+    if req.autonomous is not None:
+        minecraft_agent.autonomous_enabled = req.autonomous
+    if req.auto_shield is not None:
+        minecraft_agent.auto_shield_enabled = req.auto_shield
+    if req.auto_eat is not None:
+        minecraft_agent.auto_eat_enabled = req.auto_eat
+    if req.auto_escape is not None:
+        minecraft_agent.auto_escape_enabled = req.auto_escape
+    if req.reactive_voice is not None:
+        minecraft_agent.reactive_voice_enabled = req.reactive_voice
+
+    return {
+        "status": "ok",
+        "autonomous_enabled": minecraft_agent.autonomous_enabled,
+        "auto_shield_enabled": minecraft_agent.auto_shield_enabled,
+        "auto_eat_enabled": minecraft_agent.auto_eat_enabled,
+        "auto_escape_enabled": minecraft_agent.auto_escape_enabled,
+        "reactive_voice_enabled": minecraft_agent.reactive_voice_enabled,
+    }
+
+
+@app.post("/api/minecraft/particle")
+async def configure_minecraft_particle(req: MinecraftParticleRequest):
+    """Configures Particle FX (aura, trail, ore beacon)."""
+    res = minecraft_agent.set_particle_fx(
+        aura=req.aura,
+        trail=req.trail,
+        beacon=req.beacon,
+        density=req.density
+    )
+    return res
 
 
 @app.websocket("/ws")

@@ -100,8 +100,107 @@
       </div>
     </section>
 
+    <!-- Game Profile Switcher Bar -->
+    <section class="game-profile-bar">
+      <div class="profile-label">
+        <span class="profile-icon">🎮</span>
+        <span>HỒ SƠ GAME:</span>
+      </div>
+      <div class="profile-pills" id="game-profile-pills">
+        <button class="profile-pill active" data-profile="desktop">🌸 Desktop Pet</button>
+        <button class="profile-pill" data-profile="valorant">🎯 Valorant</button>
+        <button class="profile-pill" data-profile="minecraft">⛏️ Minecraft (Neuro-sama)</button>
+        <button class="profile-pill" data-profile="roblox">🎲 Roblox</button>
+      </div>
+    </section>
+
     <!-- Main Grid Dashboard -->
     <main class="main-grid">
+
+      <!-- Card: Minecraft Neuro-sama Autonomous Copilot & World Telemetry -->
+      <section class="pane card minecraft-card" id="minecraft-copilot-pane" data-section="all" style="display: none;">
+        <div class="pane-head">
+          <div class="pane-title">
+            <span class="pane-icon">⛏️</span> NEURO-SAMA • MINECRAFT COPILOT & AUTONOMOUS BOT
+          </div>
+          <span class="pane-tag tag-blue" id="mc-status-pill">📡 ĐANG DÒ TÌM MOD (PORT 28888)</span>
+        </div>
+        
+        <div class="pane-body">
+          <!-- Telemetry Hud -->
+          <div class="mc-telemetry-grid">
+            <div class="mc-stat-box">
+              <span class="mc-stat-label">❤️ Sinh Lực (HP)</span>
+              <strong id="mc-hp-val" class="mc-stat-val text-green">20 / 20</strong>
+            </div>
+            <div class="mc-stat-box">
+              <span class="mc-stat-label">🍗 Đói (Food)</span>
+              <strong id="mc-food-val" class="mc-stat-val text-yellow">20 / 20</strong>
+            </div>
+            <div class="mc-stat-box">
+              <span class="mc-stat-label">📍 Tọa Độ (XYZ)</span>
+              <strong id="mc-coords-val" class="mc-stat-val">X: 0 | Y: 64 | Z: 0</strong>
+            </div>
+            <div class="mc-stat-box">
+              <span class="mc-stat-label">🚨 Mức Độ Nguy Cơ</span>
+              <strong id="mc-danger-val" class="mc-stat-val text-green">🟢 AN TOÀN</strong>
+            </div>
+          </div>
+
+          <!-- Danger reasons & hostile radar -->
+          <div class="mc-radar-box">
+            <div class="mc-radar-head">
+              <span>👾 Quái Vật Gần (Radar 32m): <strong id="mc-hostiles-count">0</strong></span>
+              <span id="mc-target-looking">👁️ Đang nhìn: Không có</span>
+            </div>
+            <div id="mc-hostiles-list" class="mc-hostiles-tags">
+              <span class="radar-tag">Không có quái vật</span>
+            </div>
+          </div>
+
+          <!-- Autonomous Copilot Toggles -->
+          <div class="mc-toggles-row">
+            <label class="mc-check-label">
+              <input type="checkbox" id="mc-check-autonomous" checked>
+              <span>🤖 Lái Tự Động (AutoPilot)</span>
+            </label>
+            <label class="mc-check-label">
+              <input type="checkbox" id="mc-check-autoshield" checked>
+              <span>🛡️ Tự Động Giơ Khiên</span>
+            </label>
+            <label class="mc-check-label">
+              <input type="checkbox" id="mc-check-autoeat" checked>
+              <span>🍗 Tự Ăn Hồi Máu</span>
+            </label>
+            <label class="mc-check-label">
+              <input type="checkbox" id="mc-check-reactive" checked>
+              <span>🗣️ Phản Xạ Giọng Nói Neuro</span>
+            </label>
+          </div>
+
+          <!-- Quick Action Buttons -->
+          <div class="mc-actions-grid">
+            <button class="btn btn-mc" id="btn-mc-autopilot">🏃 AutoPilot Roam</button>
+            <button class="btn btn-mc" id="btn-mc-jump">🦘 Nhảy Vượt Rào</button>
+            <button class="btn btn-mc" id="btn-mc-eat">🍗 Ăn Thức Ăn</button>
+            <button class="btn btn-mc" id="btn-mc-shield">🛡️ Giơ Khiên 2s</button>
+            <button class="btn btn-mc" id="btn-mc-mine">⛏️ Đào Khối</button>
+            <button class="btn btn-mc btn-beacon" id="btn-mc-beacon">💎 Tìm Kim Cương (Beacon)</button>
+          </div>
+
+          <!-- Neuro-sama Chat Box -->
+          <div class="mc-chat-box">
+            <div class="mc-chat-header">
+              <span class="icon">💬</span>
+              <span>TRÒ CHUYỆN VỚI NEURO-SAMA TRONG MINECRAFT:</span>
+            </div>
+            <div class="mc-chat-input-row">
+              <input type="text" id="mc-neuro-input" placeholder="Ví dụ: Neuro ơi đi đào kim cương không? Cẩn thận Creeper nhé..." class="custom-input">
+              <button id="btn-mc-send-chat" class="btn btn-send-neuro">GỬI NEURO</button>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <!-- Card 0: Interactive Sakura Live2D / SVG Avatar with Lip-Sync -->
       <section class="pane card avatar-card" data-section="all">

@@ -1149,6 +1149,202 @@ body {
 }
 
 /* ========================================================
+   GAME PROFILE SWITCHER & MINECRAFT NEURO-SAMA COPILOT
+   ======================================================== */
+.game-profile-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 8px 14px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.profile-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--dim);
+  text-transform: uppercase;
+}
+.profile-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.profile-pill {
+  background: var(--panel-head);
+  border: 1px solid var(--line);
+  color: var(--text);
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+.profile-pill:hover {
+  border-color: var(--sakura);
+  color: var(--sakura);
+}
+.profile-pill.active {
+  background: var(--sakura-glow);
+  border-color: var(--sakura);
+  color: #fff;
+  box-shadow: 0 0 12px var(--sakura-glow);
+}
+
+.minecraft-card {
+  grid-column: 1 / -1;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  background: rgba(15, 23, 42, 0.95);
+}
+.mc-telemetry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.mc-stat-box {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mc-stat-label {
+  font-size: 0.74rem;
+  color: var(--dim);
+}
+.mc-stat-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+}
+.text-green { color: #4ade80 !important; }
+.text-yellow { color: #facc15 !important; }
+.text-red { color: #f87171 !important; }
+
+.mc-radar-box {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+.mc-radar-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.mc-hostiles-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.radar-tag {
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #38bdf8;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.74rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.mc-toggles-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  background: rgba(30, 41, 59, 0.5);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+}
+.mc-check-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  cursor: pointer;
+}
+
+.mc-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.btn-mc {
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #e0f2fe;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+.btn-mc:hover {
+  background: rgba(56, 189, 248, 0.25);
+  border-color: #38bdf8;
+}
+.btn-beacon {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.25);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+}
+
+.mc-chat-box {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+.mc-chat-header {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #38bdf8;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mc-chat-input-row {
+  display: flex;
+  gap: 8px;
+}
+.btn-send-neuro {
+  background: #0284c7;
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-send-neuro:hover {
+  background: #0369a1;
+}
+
+/* ========================================================
    FOOTER
    ======================================================== */
 .footer {

@@ -84,6 +84,8 @@ class OverlaySignals(QObject):
     chat_draft_received = pyqtSignal(dict)
     status_updated = pyqtSignal(str)
     viseme_received = pyqtSignal(dict)
+    profile_changed = pyqtSignal(dict)
+    neuro_commentary_received = pyqtSignal(dict)
 
 
 class ValorantOverlayWindow(QMainWindow):
@@ -104,6 +106,8 @@ class ValorantOverlayWindow(QMainWindow):
         self.signals.chat_draft_received.connect(self.display_chat_draft)
         self.signals.status_updated.connect(self.update_status_bar)
         self.signals.viseme_received.connect(self.update_avatar_viseme)
+        self.signals.profile_changed.connect(self.update_game_profile)
+        self.signals.neuro_commentary_received.connect(self.display_neuro_commentary)
 
         # Connect lipsync subscriber
         lipsync_analyzer.register_subscriber(lambda s: self.signals.viseme_received.emit(s))
@@ -359,6 +363,54 @@ class ValorantOverlayWindow(QMainWindow):
         else:
             self.avatar_state_badge.setText("🌸 IDLE • SẴN SÀNG")
             self.avatar_state_badge.setStyleSheet("color: #9ECE6A; background: rgba(158, 206, 106, 30); border: 1px solid rgba(158, 206, 106, 120); border-radius: 9px; padding: 2px 8px;")
+
+    def update_game_profile(self, data: dict) -> None:
+        """Dynamically adapts desktop companion HUD to current game profile."""
+        profile_id = data.get("id", "desktop").lower()
+        name = data.get("name", "Desktop Companion")
+        icon = data.get("icon", "🌸")
+
+        if hasattr(self, "pet_name_badge"):
+            if profile_id == "minecraft":
+                self.pet_name_badge.setText(f"{icon} NEURO-SAMA • MINECRAFT")
+                self.pet_name_badge.setStyleSheet("color: #38BDF8; border: none; background: transparent;")
+            elif profile_id == "valorant":
+                self.pet_name_badge.setText(f"{icon} SAKURA AI • VALORANT")
+                self.pet_name_badge.setStyleSheet("color: #FF4655; border: none; background: transparent;")
+            elif profile_id == "roblox":
+                self.pet_name_badge.setText(f"{icon} ROBLOX BUDDY")
+                self.pet_name_badge.setStyleSheet("color: #FBBF24; border: none; background: transparent;")
+            else:
+                self.pet_name_badge.setText(f"{icon} SAKURA AI • DESKTOP")
+                self.pet_name_badge.setStyleSheet("color: #FF8FAB; border: none; background: transparent;")
+
+        if hasattr(self, "toast_badge"):
+            self.toast_badge.setText(f"{icon} {name.upper()}")
+
+    def display_neuro_commentary(self, data: dict) -> None:
+        """Displays Neuro-sama voice reaction and speech bubble on desktop."""
+        text = data.get("text", "")
+        emotion = data.get("emotion", "happy")
+
+        if hasattr(self, "pet_speech_label"):
+            self.pet_speech_label.setText(text)
+        elif hasattr(self, "toast_translated_label"):
+            self.toast_translated_label.setText(text)
+            self.show_notification()
+
+        if hasattr(self, "avatar_state_badge"):
+            if emotion in ["panic", "alert", "danger"]:
+                self.avatar_state_badge.setText("🚨 NGUY CƠ IN-GAME")
+                self.avatar_state_badge.setStyleSheet("color: #EF4444; background: rgba(239, 68, 68, 30); border: 1px solid #EF4444; border-radius: 9px; padding: 2px 8px;")
+            elif emotion == "excited":
+                self.avatar_state_badge.setText("✨ PHẤN KHÍCH")
+                self.avatar_state_badge.setStyleSheet("color: #F59E0B; background: rgba(245, 158, 11, 30); border: 1px solid #F59E0B; border-radius: 9px; padding: 2px 8px;")
+            else:
+                self.avatar_state_badge.setText("💬 NEURO BÌNH LUẬN")
+                self.avatar_state_badge.setStyleSheet("color: #38BDF8; background: rgba(56, 189, 248, 30); border: 1px solid #38BDF8; border-radius: 9px; padding: 2px 8px;")
+
+        if not self.isVisible():
+            self.show()
 
     def _init_card_ui(self) -> None:
         """Initializes classic fixed card HUD (pinned at top-right)."""
@@ -662,6 +714,10 @@ def start_websocket_listener(signals: OverlaySignals, port: int = 8000) -> None:
                             signals.chat_draft_received.emit(data)
                         elif m_type == "wake_word_triggered":
                             signals.gemini_response_received.emit(data.get("message", ""))
+                        elif m_type == "profile_changed":
+                            signals.profile_changed.emit(data)
+                        elif m_type == "neuro_commentary":
+                            signals.neuro_commentary_received.emit(data)
                         elif m_type == "game_status":
                             if data.get("running"):
                                 signals.status_updated.emit("🟢 IN-GAME")
@@ -691,11 +747,15 @@ def run_overlay_standalone() -> None:
     # Start live WebSocket event listener
     start_websocket_listener(window.signals, port=port)
 
-    # In notification mode: window starts hidden and pops up on demand!
-    # In card mode: window shows immediately.
-    if window.mode == "card":
+    # In tamagotchi (desktop pet) or card mode: window shows immediately on desktop screen!
+    # In notification mode: window starts hidden and pops up on incoming speech.
+    if window.mode in ["card", "tamagotchi"]:
         window.show()
     else:
+        # Window remains hidden until a translation or alert arrives
+        pass
+
+    sys.exit(app.exec())
         # Window remains hidden until a translation or alert arrives
         pass
 

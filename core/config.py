@@ -94,6 +94,21 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "target_process": "VALORANT-Win64-Shipping.exe",
         "check_interval": 2.0,
         "auto_toggle_overlay": True,
+        "auto_switch_game_profile": True,
+    },
+    "minecraft": {
+        "bridge_host": "127.0.0.1",
+        "bridge_port": 28888,
+        "autonomous_copilot": True,
+        "auto_shield": True,
+        "auto_eat": True,
+        "auto_escape": True,
+        "reactive_voice": True,
+        "neuro_persona": True,
+    },
+    "roblox": {
+        "chat_translation": True,
+        "auto_tips": True,
     },
 }
 
