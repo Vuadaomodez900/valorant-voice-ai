@@ -11,13 +11,81 @@ import os
 import re
 import json
 import time
+import shutil
+import sqlite3
+import subprocess
 import urllib.request
 import urllib.error
+import urllib.parse
 import threading
-from typing import Dict, List, Optional, Callable, Generator
+import random
+from pathlib import Path
+from typing import Dict, List, Optional, Callable, Any
 
 from core.config import config
 from core.lipsync import lipsync_analyzer
+
+
+def read_omniroute_key_from_db() -> str:
+    """Reads the most recent active API key from ~/.omniroute/storage.sqlite."""
+    db_path = Path(os.environ.get("OMNIROUTE_DB_PATH") or Path.home() / ".omniroute" / "storage.sqlite")
+    if not db_path.exists():
+        return ""
+    try:
+        conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=1.0)
+        try:
+            row = conn.execute(
+                "SELECT key FROM api_keys WHERE is_active = 1 AND revoked_at IS NULL "
+                "AND key IS NOT NULL ORDER BY created_at DESC LIMIT 1"
+            ).fetchone()
+            return str(row[0]).strip() if row and row[0] else ""
+        finally:
+            conn.close()
+    except Exception:
+        return ""
+
+
+def is_agy_active(gateway_url: str = "http://127.0.0.1:20128") -> bool:
+    """Checks whether AGY CLI or the local OmniRoute/AGY gateway is active."""
+    if shutil.which("agy"):
+        return True
+    origin = gateway_url.replace("/v1", "").rstrip("/")
+    try:
+        req = urllib.request.Request(f"{origin}/api/health", method="GET")
+        with urllib.request.urlopen(req, timeout=1.2) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
+
+
+def synthesize_gura_tts_wav(text: str, lang: str = "vi") -> Optional[bytes]:
+    """Synthesizes fast Gura-style (high-pitched cute anime) WAV audio via Google TTS + ffmpeg."""
+    clean = re.sub(r"\s+", " ", text).strip()
+    if not clean or not shutil.which("ffmpeg"):
+        return None
+    try:
+        url = (
+            "https://translate.google.com/translate_tts"
+            f"?ie=UTF-8&q={urllib.parse.quote(clean[:180])}&tl={urllib.parse.quote(lang)}&client=tw-ob"
+        )
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=8.0) as resp:
+            mp3_bytes = resp.read()
+        if not mp3_bytes:
+            return None
+        proc = subprocess.run(
+            [
+                "ffmpeg", "-loglevel", "error", "-f", "mp3", "-i", "pipe:0",
+                "-af", "asetrate=48000*1.25,aresample=48000,atempo=0.84",
+                "-ar", "24000", "-ac", "1", "-f", "wav", "pipe:1",
+            ],
+            input=mp3_bytes,
+            capture_output=True,
+            timeout=8.0,
+        )
+        return proc.stdout if proc.returncode == 0 and proc.stdout else None
+    except Exception:
+        return None
 
 
 class FastTacticalCache:
@@ -97,8 +165,20 @@ class UnifiedAIRouter:
         cfg = config.data.get("ai", {})
         self._provider = cfg.get("provider", "antigravity_cli")
         self._gateway_url = cfg.get("antigravity_gateway_url", "http://127.0.0.1:20128/v1").rstrip("/")
-        self._model = cfg.get("model", "gemini-2.0-flash")
-        self._api_key = cfg.get("api_key") or os.environ.get("GEMINI_API_KEY") or os.environ.get("OPENAI_API_KEY") or ""
+        self._model = cfg.get("model", "ddgw/claude-haiku-4-5")
+        self._fallback_models = cfg.get("fallback_models", [
+            "ddgw/gpt-5.4-mini",
+            "ddgw/gpt-5.6-luna",
+            "auto/best-chat",
+        ])
+        self._api_key = (
+            cfg.get("api_key")
+            or os.environ.get("OMNIROUTE_API_KEY")
+            or read_omniroute_key_from_db()
+            or os.environ.get("GEMINI_API_KEY")
+            or os.environ.get("OPENAI_API_KEY")
+            or ""
+        )
 
     def register_response_callback(self, cb: Callable[[str], None]) -> None:
         self.on_response_cbs.append(cb)
@@ -180,34 +260,46 @@ class UnifiedAIRouter:
         return self.query_fast(full_prompt)
 
     def _call_antigravity_gateway(self, prompt: str, system_context: str = "") -> str:
-        """Calls Antigravity CLI / OmniRoute Gateway at 127.0.0.1:20128."""
+        """Calls OmniRoute / Antigravity Gateway at 127.0.0.1:20128 with model fallback."""
         endpoint = f"{self._gateway_url}/chat/completions"
         system_prompt = system_context or self._get_active_system_prompt()
+        api_key = self._api_key or read_omniroute_key_from_db() or "antigravity-local"
 
-        payload = {
-            "model": self._model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
-            ],
-            "max_tokens": 150,
-            "temperature": 0.4
-        }
+        candidates = [self._model] + [m for m in getattr(self, "_fallback_models", []) if m != self._model]
+        last_err: Optional[Exception] = None
 
-        req = urllib.request.Request(
-            endpoint,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self._api_key or 'antigravity-local'}"
-            },
-            method="POST"
-        )
+        for model_name in candidates:
+            payload = {
+                "model": model_name,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt}
+                ],
+                "max_tokens": 150,
+                "temperature": 0.4
+            }
 
-        with urllib.request.urlopen(req, timeout=4.0) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            content = data["choices"][0]["message"]["content"].strip()
-            return content
+            req = urllib.request.Request(
+                endpoint,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {api_key}"
+                },
+                method="POST"
+            )
+
+            try:
+                with urllib.request.urlopen(req, timeout=8.0) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    content = data["choices"][0]["message"]["content"].strip()
+                    if content:
+                        return content
+            except Exception as err:
+                last_err = err
+                continue
+
+        raise last_err or RuntimeError("All OmniRoute models failed")
 
     def _call_direct_api(self, prompt: str, system_context: str = "") -> str:
         """Calls Google Gemini REST API or OpenAI endpoint with API key."""

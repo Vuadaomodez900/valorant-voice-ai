@@ -69,9 +69,15 @@ ai:
   provider: "antigravity_cli"
   # Antigravity CLI / Local Model Gateway (OmniRoute standard: http://127.0.0.1:20128/v1)
   antigravity_gateway_url: "http://127.0.0.1:20128/v1"
-  model: "gemini-2.0-flash"
+  model: "ddgw/claude-haiku-4-5"
+  fallback_models:
+    - "ddgw/gpt-5.4-mini"
+    - "ddgw/gpt-5.6-luna"
+    - "auto/best-chat"
   api_key: ""
   fast_tactical_cache: true
+  voice_preset: "gura"
+  connect_agy_if_running: true
 
 tamagotchi:
   enabled: true
